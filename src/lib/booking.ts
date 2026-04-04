@@ -1,4 +1,24 @@
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import { DateTime } from "luxon";
+import { env } from "@/lib/env";
+
+const PHONE_ENCRYPTION_VERSION = "enc1";
+
+function getPhoneSecret() {
+  const secret = env.phoneEncryptionSecret ?? env.supabaseServiceRoleKey;
+
+  if (!secret) {
+    throw new Error(
+      "Нужен PHONE_ENCRYPTION_SECRET или SUPABASE_SERVICE_ROLE_KEY для защиты телефонов.",
+    );
+  }
+
+  return secret;
+}
+
+function getPhoneKey() {
+  return createHash("sha256").update(getPhoneSecret()).digest();
+}
 
 export function phoneLast4(phone: string) {
   const digits = phone.replace(/\D/g, "");
@@ -6,11 +26,51 @@ export function phoneLast4(phone: string) {
 }
 
 export function encryptPhone(phone: string) {
-  return Buffer.from(phone, "utf8").toString("base64");
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", getPhoneKey(), iv);
+  const encrypted = Buffer.concat([
+    cipher.update(phone, "utf8"),
+    cipher.final(),
+  ]);
+  const authTag = cipher.getAuthTag();
+
+  return [
+    PHONE_ENCRYPTION_VERSION,
+    iv.toString("base64url"),
+    authTag.toString("base64url"),
+    encrypted.toString("base64url"),
+  ].join(":");
 }
 
 export function decryptPhone(phoneEncrypted: string) {
-  return Buffer.from(phoneEncrypted, "base64").toString("utf8");
+  if (!phoneEncrypted) {
+    return "";
+  }
+
+  if (!phoneEncrypted.startsWith(`${PHONE_ENCRYPTION_VERSION}:`)) {
+    return Buffer.from(phoneEncrypted, "base64").toString("utf8");
+  }
+
+  const [, ivBase64Url, authTagBase64Url, encryptedBase64Url] =
+    phoneEncrypted.split(":");
+  const decipher = createDecipheriv(
+    "aes-256-gcm",
+    getPhoneKey(),
+    Buffer.from(ivBase64Url, "base64url"),
+  );
+
+  decipher.setAuthTag(Buffer.from(authTagBase64Url, "base64url"));
+
+  return Buffer.concat([
+    decipher.update(Buffer.from(encryptedBase64Url, "base64url")),
+    decipher.final(),
+  ]).toString("utf8");
+}
+
+export function hashPhone(phone: string) {
+  return createHash("sha256")
+    .update(`${getPhoneSecret()}:${phone}`)
+    .digest("hex");
 }
 
 export function toUtcIsoFromLocalSlot(input: {

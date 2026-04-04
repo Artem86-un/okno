@@ -46,6 +46,9 @@ export function BookingFlow({
     [bookingSlotsByService, serviceId],
   );
   const selectedDate = bookingSlots.find((slot) => slot.value === dateValue);
+  const selectedDateLabel = dateValue
+    ? DateTime.fromISO(dateValue).setLocale("ru").toFormat("d LLLL")
+    : "";
 
   useEffect(() => {
     const firstDay = bookingSlots[0];
@@ -343,7 +346,7 @@ export function BookingFlow({
         <div className="rounded-[24px] bg-[var(--color-panel)] p-4 text-sm text-[var(--color-ink-soft)]">
           <p className="font-medium text-[var(--color-ink)]">Что вы выбрали</p>
           <p className="mt-2">
-            {selectedService?.title} • {dateValue} • {time}
+            {selectedService?.title} • {selectedDateLabel} • {time}
           </p>
         </div>
       ) : null}

@@ -1,16 +1,18 @@
 import { NextResponse } from "next/server";
-import { DateTime } from "luxon";
 import { z } from "zod";
-import { env, isSupabaseConfigured } from "@/lib/env";
+import { isSupabaseConfigured } from "@/lib/env";
 import {
+  decryptPhone,
   encryptPhone,
+  hashPhone,
   humanizeBookingDate,
   phoneLast4,
   toUtcIsoFromLocalSlot,
 } from "@/lib/booking";
+import { saveMockBookingConfirmation } from "@/lib/mock-booking-confirmations";
 import { sendBookingConfirmationSms, sendMasterTelegramNotification } from "@/lib/notifications";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { services as mockServices } from "@/lib/mock-data";
+import { profile as mockProfile, services as mockServices } from "@/lib/mock-data";
 
 const bookingSchema = z.object({
   username: z.string().min(1),
@@ -31,17 +33,22 @@ export async function POST(request: Request) {
 
   if (!isSupabaseConfigured) {
     const mockService = mockServices.find((service) => service.id === parsed.data.serviceId);
-    const params = new URLSearchParams({
-      service: mockService?.title ?? "Запись",
+    const startsAtIso = toUtcIsoFromLocalSlot({
       date: parsed.data.date,
       time: parsed.data.time,
-      name: parsed.data.name,
-      phone: parsed.data.phone,
+      timezone: mockProfile.timezone,
+    });
+    const confirmation = saveMockBookingConfirmation({
+      username: parsed.data.username,
+      clientName: parsed.data.name,
+      serviceTitle: mockService?.title ?? "Запись",
+      startsAtIso: startsAtIso ?? new Date().toISOString(),
     });
 
     return NextResponse.json({
       ok: true,
-      redirectUrl: `/${parsed.data.username}/confirm?${params.toString()}`,
+      bookingId: confirmation.id,
+      redirectUrl: `/${parsed.data.username}/confirm?bookingId=${confirmation.id}`,
     });
   }
 
@@ -99,58 +106,25 @@ export async function POST(request: Request) {
   );
   const bufferMinutes = Number(profileRow.buffer_minutes ?? 0);
   const slotBusyEnd = new Date(endsAt.getTime() + bufferMinutes * 60_000);
-  const slotBusyStart = new Date(startsAt.getTime() - bufferMinutes * 60_000);
 
-  const [{ data: collisionRows, error: collisionError }, { data: blockedRows, error: blockedError }] =
-    await Promise.all([
-      admin
-        .from("bookings")
-        .select("id, starts_at, ends_at")
-        .eq("profile_id", profileRow.id)
-        .eq("status", "confirmed")
-        .lt("starts_at", slotBusyEnd.toISOString())
-        .gt("ends_at", slotBusyStart.toISOString()),
-      admin
-        .from("blocked_slots")
-        .select("id, starts_at, ends_at")
-        .eq("profile_id", profileRow.id)
-        .lt("starts_at", slotBusyEnd.toISOString())
-        .gt("ends_at", startsAt.toISOString()),
-    ]);
+  const { data: hasConflict, error: collisionError } = await admin.rpc(
+    "has_booking_conflict",
+    {
+      p_profile_id: profileRow.id,
+      p_candidate_start: startsAt.toISOString(),
+      p_candidate_busy_end: slotBusyEnd.toISOString(),
+      p_buffer_minutes: bufferMinutes,
+    },
+  );
 
-  if (collisionError || blockedError) {
+  if (collisionError) {
     return NextResponse.json(
       { error: "Не получилось проверить свободное время." },
       { status: 500 },
     );
   }
 
-  const candidateStart = DateTime.fromJSDate(startsAt, { zone: "utc" });
-  const candidateBusyEnd = DateTime.fromJSDate(slotBusyEnd, { zone: "utc" });
-
-  const hasBookingCollision = (collisionRows ?? []).some((booking) => {
-    const bookingStart = DateTime.fromISO(String(booking.starts_at), {
-      zone: "utc",
-    });
-    const bookingBusyEnd = DateTime.fromISO(String(booking.ends_at), {
-      zone: "utc",
-    }).plus({ minutes: bufferMinutes });
-
-    return candidateStart < bookingBusyEnd && candidateBusyEnd > bookingStart;
-  });
-
-  const hasBlockedCollision = (blockedRows ?? []).some((blockedSlot) => {
-    const blockedStart = DateTime.fromISO(String(blockedSlot.starts_at), {
-      zone: "utc",
-    });
-    const blockedEnd = DateTime.fromISO(String(blockedSlot.ends_at), {
-      zone: "utc",
-    });
-
-    return candidateStart < blockedEnd && candidateBusyEnd > blockedStart;
-  });
-
-  if (hasBookingCollision || hasBlockedCollision) {
+  if (hasConflict) {
     return NextResponse.json(
       { error: "Это время уже занято. Выбери другой слот." },
       { status: 409 },
@@ -158,13 +132,14 @@ export async function POST(request: Request) {
   }
 
   const encryptedPhone = encryptPhone(storedPhone);
+  const phoneHash = hashPhone(storedPhone);
   let clientRow: { id: string } | null = null;
 
   const { data: existingClient, error: existingClientError } = await admin
     .from("clients")
     .select("id")
     .eq("profile_id", profileRow.id)
-    .eq("phone_encrypted", encryptedPhone)
+    .eq("phone_hash", phoneHash)
     .maybeSingle();
 
   if (existingClientError) {
@@ -174,14 +149,44 @@ export async function POST(request: Request) {
     );
   }
 
-  if (existingClient) {
+  let resolvedClient = existingClient;
+
+  if (!resolvedClient) {
+    const { data: legacyClients, error: legacyClientError } = await admin
+      .from("clients")
+      .select("id, phone_encrypted, phone_hash")
+      .eq("profile_id", profileRow.id)
+      .is("phone_hash", null);
+
+    if (legacyClientError) {
+      return NextResponse.json(
+        { error: "Не получилось найти клиента в базе." },
+        { status: 500 },
+      );
+    }
+
+    const matchedLegacyClient = (legacyClients ?? []).find((client) => {
+      const encryptedPhoneValue =
+        typeof client.phone_encrypted === "string" ? client.phone_encrypted : "";
+
+      return decryptPhone(encryptedPhoneValue) === storedPhone;
+    });
+
+    if (matchedLegacyClient) {
+      resolvedClient = { id: String(matchedLegacyClient.id) };
+    }
+  }
+
+  if (resolvedClient) {
     const { data: updatedClient, error: updateClientError } = await admin
       .from("clients")
       .update({
         name: parsed.data.name,
+        phone_encrypted: encryptedPhone,
+        phone_hash: phoneHash,
         last_booking_at: startsAt.toISOString(),
       })
-      .eq("id", existingClient.id)
+      .eq("id", resolvedClient.id)
       .select("id")
       .single();
 
@@ -200,6 +205,7 @@ export async function POST(request: Request) {
         profile_id: profileRow.id,
         name: parsed.data.name,
         phone_encrypted: encryptedPhone,
+        phone_hash: phoneHash,
         phone_last4: phoneLast4(storedPhone),
         notes: "",
         last_booking_at: startsAt.toISOString(),
@@ -272,16 +278,9 @@ export async function POST(request: Request) {
     },
   ]);
 
-  const params = new URLSearchParams({
-    service: String(serviceRow.title),
-    date: parsed.data.date,
-    time: parsed.data.time,
-    name: parsed.data.name,
-    phone: parsed.data.phone,
-  });
-
   return NextResponse.json({
     ok: true,
-    redirectUrl: `${env.appUrl}/${parsed.data.username}/confirm?${params.toString()}`,
+    bookingId: bookingRow.id,
+    redirectUrl: `/${parsed.data.username}/confirm?bookingId=${bookingRow.id}`,
   });
 }

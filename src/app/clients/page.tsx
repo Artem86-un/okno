@@ -2,12 +2,19 @@ import { redirect } from "next/navigation";
 import { Search } from "lucide-react";
 import { SiteShell } from "@/components/layout/site-shell";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { getDashboardData } from "@/lib/data";
 
-export default async function ClientsPage() {
+type ClientsPageProps = {
+  searchParams: Promise<{
+    query?: string;
+  }>;
+};
+
+export default async function ClientsPage({ searchParams }: ClientsPageProps) {
   const data = await getDashboardData();
 
   if (!data) {
@@ -15,6 +22,15 @@ export default async function ClientsPage() {
   }
 
   const { clients, profile } = data;
+  const { query = "" } = await searchParams;
+  const normalizedQuery = query.trim().toLowerCase();
+  const filteredClients = normalizedQuery
+    ? clients.filter((client) =>
+        [client.name, client.phoneMasked, client.notes].some((value) =>
+          value.toLowerCase().includes(normalizedQuery),
+        ),
+      )
+    : clients;
 
   return (
     <SiteShell compact>
@@ -27,39 +43,53 @@ export default async function ClientsPage() {
         </div>
 
         <Card className="space-y-5">
-          <div className="flex items-end gap-4">
-            <div className="flex-1">
-              <Input label="Поиск" placeholder="Имя или телефон" />
+          <form className="flex flex-wrap items-end gap-4">
+            <div className="min-w-[260px] flex-1">
+              <Input
+                label="Поиск"
+                name="query"
+                placeholder="Имя, телефон или заметка"
+                defaultValue={query}
+              />
             </div>
-            <div className="mb-1 hidden h-12 w-12 items-center justify-center rounded-2xl border border-[var(--color-line)] sm:flex">
-              <Search size={18} className="text-[var(--color-muted)]" />
-            </div>
-          </div>
-          <div className="grid gap-4">
-            {clients.map((client) => (
-              <div key={client.id} className="rounded-[24px] border border-[var(--color-line)] p-4">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <p className="font-medium text-[var(--color-ink)]">{client.name}</p>
-                    <p className="mt-1 text-sm text-[var(--color-ink-soft)]">{client.phoneMasked}</p>
+            <Button type="submit" variant="secondary" className="gap-2">
+              <Search size={16} />
+              Найти
+            </Button>
+          </form>
+          {filteredClients.length > 0 ? (
+            <div className="grid gap-4">
+              {filteredClients.map((client) => (
+                <div key={client.id} className="rounded-[24px] border border-[var(--color-line)] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                      <p className="font-medium text-[var(--color-ink)]">{client.name}</p>
+                      <p className="mt-1 text-sm text-[var(--color-ink-soft)]">{client.phoneMasked}</p>
+                    </div>
+                    <p className="text-sm text-[var(--color-muted)]">
+                      Последний визит:{" "}
+                      {new Date(client.lastBookingAt).toLocaleDateString("ru-RU")}
+                    </p>
                   </div>
-                  <p className="text-sm text-[var(--color-muted)]">
-                    Последний визит:{" "}
-                    {new Date(client.lastBookingAt).toLocaleDateString("ru-RU")}
-                  </p>
+                  <p className="mt-3 text-sm leading-6 text-[var(--color-muted)]">{client.notes}</p>
                 </div>
-                <p className="mt-3 text-sm leading-6 text-[var(--color-muted)]">{client.notes}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-[24px] border border-dashed border-[var(--color-line)] p-5 text-sm leading-6 text-[var(--color-muted)]">
+              По запросу <span className="font-medium text-[var(--color-ink)]">{query}</span> пока ничего не найдено.
+            </div>
+          )}
         </Card>
 
-        <EmptyState
-          title="Новых клиентов пока нет"
-          description="После первой реальной записи клиент появится здесь автоматически вместе с историей и заметками."
-          ctaLabel="Открыть свою ссылку"
-          ctaHref={`/${profile.username}`}
-        />
+        {clients.length === 0 ? (
+          <EmptyState
+            title="Новых клиентов пока нет"
+            description="После первой реальной записи клиент появится здесь автоматически вместе с историей и заметками."
+            ctaLabel="Открыть свою ссылку"
+            ctaHref={`/${profile.username}`}
+          />
+        ) : null}
       </div>
     </SiteShell>
   );

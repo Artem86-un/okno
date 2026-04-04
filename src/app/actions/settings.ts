@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { DateTime } from "luxon";
 import { z } from "zod";
 import { isSupabaseConfigured } from "@/lib/env";
+import { getCurrentAuthProfile } from "@/lib/data";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -44,47 +45,9 @@ const blockedSlotSchema = z.object({
 async function requireProfile() {
   if (!isSupabaseConfigured) return null;
 
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const authProfile = await getCurrentAuthProfile();
 
-  if (!user) return null;
-
-  const admin = createSupabaseAdminClient();
-  const { data: profileRow } = await admin
-    .from("profiles")
-    .select("*")
-    .eq("password_auth_id", user.id)
-    .maybeSingle();
-
-  if (!profileRow) return null;
-
-  return {
-    id: String(profileRow.id),
-    email: String(profileRow.email),
-    passwordAuthId: String(profileRow.password_auth_id),
-    fullName: String(profileRow.full_name),
-    username: String(profileRow.username),
-    specialty: String(profileRow.specialty),
-    bio: String(profileRow.bio ?? ""),
-    locationText: String(profileRow.location_text ?? ""),
-    timezone: String(profileRow.timezone ?? "Europe/Simferopol"),
-    telegramChatId: profileRow.telegram_chat_id
-      ? String(profileRow.telegram_chat_id)
-      : null,
-    avatarUrl: String(profileRow.avatar_url ?? ""),
-    subscriptionTier: profileRow.subscription_tier === "pro" ? "pro" : "free",
-    monthlyBookingLimit: Number(profileRow.monthly_booking_limit ?? 50),
-    monthlyBookingsUsed: 0,
-    bookingWindowDays: Number(profileRow.booking_window_days ?? 30),
-    slotIntervalMinutes: Number(profileRow.slot_interval_minutes ?? 30),
-    bufferMinutes: Number(profileRow.buffer_minutes ?? 15),
-    cancellationNoticeHours: Number(
-      profileRow.cancellation_notice_hours ?? 2,
-    ),
-    joinedAt: String(profileRow.created_at),
-  };
+  return authProfile?.profile ?? null;
 }
 
 export async function updateProfileAction(

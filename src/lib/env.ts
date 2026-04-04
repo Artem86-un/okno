@@ -3,6 +3,7 @@ export const env = {
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
   supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  phoneEncryptionSecret: process.env.PHONE_ENCRYPTION_SECRET,
   smsApiUrl: process.env.SMS_API_URL,
   smsApiKey: process.env.SMS_API_KEY,
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,

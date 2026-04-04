@@ -12,8 +12,9 @@ import {
   type Profile,
   services as mockServices,
 } from "@/lib/mock-data";
-import { decryptPhone } from "@/lib/booking";
+import { decryptPhone, humanizeBookingDate } from "@/lib/booking";
 import { isSupabaseConfigured } from "@/lib/env";
+import { getMockBookingConfirmation } from "@/lib/mock-booking-confirmations";
 import { buildBookingSlotsForService } from "@/lib/slots";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -282,6 +283,12 @@ export async function getDashboardData() {
 
   const admin = createSupabaseAdminClient();
   const profileId = authProfile.profile.id;
+  const monthStart = DateTime.now()
+    .setZone(authProfile.profile.timezone)
+    .startOf("month");
+  const monthEnd = monthStart.plus({ months: 1 });
+  const monthStartUtc = monthStart.toUTC().toISO() ?? new Date().toISOString();
+  const monthEndUtc = monthEnd.toUTC().toISO() ?? new Date().toISOString();
 
   const [
     serviceResult,
@@ -290,6 +297,7 @@ export async function getDashboardData() {
     availabilityResult,
     blockedResult,
     notificationResult,
+    monthlyBookingsUsedResult,
   ] = await Promise.all([
     admin.from("services").select("*").eq("profile_id", profileId).order("sort_order"),
     admin.from("bookings").select("*").eq("profile_id", profileId).order("starts_at"),
@@ -310,27 +318,35 @@ export async function getDashboardData() {
       .eq("profile_id", profileId)
       .order("created_at", { ascending: false })
       .limit(10),
+    admin
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("profile_id", profileId)
+      .eq("status", "confirmed")
+      .or(
+        `and(starts_at.gte.${monthStartUtc},starts_at.lt.${monthEndUtc}),and(created_at.gte.${monthStartUtc},created_at.lt.${monthEndUtc})`,
+      ),
   ]);
 
   const normalizedBookings = (bookingResult.data ?? []).map((row) => mapBooking(row));
   const normalizedClients = (clientResult.data ?? []).map((row) => mapClient(row));
-  const currentMonth = DateTime.now().setZone(authProfile.profile.timezone).toFormat("yyyy-MM");
+
+  if (
+    serviceResult.error ||
+    bookingResult.error ||
+    clientResult.error ||
+    availabilityResult.error ||
+    blockedResult.error ||
+    notificationResult.error ||
+    monthlyBookingsUsedResult.error
+  ) {
+    throw new Error("Не получилось загрузить данные кабинета.");
+  }
 
   return {
     profile: {
       ...authProfile.profile,
-      monthlyBookingsUsed: normalizedBookings.filter(
-        (booking) => {
-          if (booking.status !== "confirmed") return false;
-          const startsAtMonth = DateTime.fromISO(booking.startsAt, { zone: "utc" })
-            .setZone(authProfile.profile.timezone)
-            .toFormat("yyyy-MM");
-          const createdAtMonth = DateTime.fromISO(booking.createdAt, { zone: "utc" })
-            .setZone(authProfile.profile.timezone)
-            .toFormat("yyyy-MM");
-          return startsAtMonth === currentMonth || createdAtMonth === currentMonth;
-        },
-      ).length,
+      monthlyBookingsUsed: monthlyBookingsUsedResult.count ?? 0,
     },
     services: (serviceResult.data ?? []).map((row) => mapService(row)),
     bookings: normalizedBookings,
@@ -348,4 +364,95 @@ export async function getDashboardData() {
 
 export function getPricingData() {
   return pricingPlans;
+}
+
+export async function getBookingConfirmationData(
+  username: string,
+  bookingId: string,
+) {
+  if (!bookingId) {
+    return null;
+  }
+
+  if (!isSupabaseConfigured) {
+    if (username !== mockProfile.username) {
+      return null;
+    }
+
+    const booking = getMockBookingConfirmation(bookingId);
+
+    if (!booking || booking.username !== username) {
+      return null;
+    }
+
+    return {
+      clientName: booking.clientName,
+      serviceTitle: booking.serviceTitle,
+      startsAtLabel: humanizeBookingDate({
+        startsAtIso: booking.startsAtIso,
+        timezone: mockProfile.timezone,
+      }),
+    };
+  }
+
+  const admin = createSupabaseAdminClient();
+  const { data: profileRow, error: profileError } = await admin
+    .from("profiles")
+    .select("id, timezone")
+    .eq("username", username)
+    .maybeSingle();
+
+  if (profileError) {
+    throw new Error("Не получилось загрузить профиль мастера.");
+  }
+
+  if (!profileRow) {
+    return null;
+  }
+
+  const { data: bookingRow, error: bookingError } = await admin
+    .from("bookings")
+    .select("*")
+    .eq("id", bookingId)
+    .eq("profile_id", profileRow.id)
+    .maybeSingle();
+
+  if (bookingError) {
+    throw new Error("Не получилось загрузить запись.");
+  }
+
+  if (!bookingRow) {
+    return null;
+  }
+
+  const [{ data: clientRow, error: clientError }, { data: serviceRow, error: serviceError }] =
+    await Promise.all([
+      admin
+        .from("clients")
+        .select("name")
+        .eq("id", bookingRow.client_id)
+        .maybeSingle(),
+      admin
+        .from("services")
+        .select("title")
+        .eq("id", bookingRow.service_id)
+        .maybeSingle(),
+    ]);
+
+  if (clientError || serviceError) {
+    throw new Error("Не получилось собрать подтверждение записи.");
+  }
+
+  if (!clientRow || !serviceRow) {
+    return null;
+  }
+
+  return {
+    clientName: String(clientRow.name),
+    serviceTitle: String(serviceRow.title),
+    startsAtLabel: humanizeBookingDate({
+      startsAtIso: String(bookingRow.starts_at),
+      timezone: String(profileRow.timezone ?? "Europe/Simferopol"),
+    }),
+  };
 }

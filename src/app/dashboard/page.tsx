@@ -16,6 +16,21 @@ import { EmptyState } from "@/components/ui/empty-state";
 import type { Booking, Client, Service } from "@/lib/mock-data";
 import { getDashboardData } from "@/lib/data";
 
+function pluralizeActiveBookings(count: number) {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+
+  if (mod10 === 1 && mod100 !== 11) {
+    return `${count} активная запись`;
+  }
+
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return `${count} активные записи`;
+  }
+
+  return `${count} активных записей`;
+}
+
 export default async function DashboardPage() {
   const data = await getDashboardData();
 
@@ -69,7 +84,7 @@ export default async function DashboardPage() {
               Добрый день, {profile.fullName}
             </h1>
             <p className="max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
-              Сегодня у тебя {todayBookings.length} активных записи. Внизу все ближайшие визиты и
+              Сегодня у тебя {pluralizeActiveBookings(todayBookings.length)}. Внизу все ближайшие визиты и
               быстрые действия по кабинету.
             </p>
           </div>
