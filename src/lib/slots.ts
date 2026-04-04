@@ -1,0 +1,117 @@
+import { DateTime } from "luxon";
+import type {
+  AvailabilityRule,
+  BlockedSlot,
+  Booking,
+  BookingSlot,
+  Profile,
+  Service,
+} from "@/lib/mock-data";
+
+function overlaps(
+  startA: DateTime,
+  endA: DateTime,
+  startB: DateTime,
+  endB: DateTime,
+) {
+  return startA < endB && endA > startB;
+}
+
+export function buildBookingSlotsForService(input: {
+  profile: Profile;
+  service: Service;
+  availabilityRules: AvailabilityRule[];
+  blockedSlots: BlockedSlot[];
+  bookings: Booking[];
+  maxDaysToShow?: number;
+}) {
+  const {
+    profile,
+    service,
+    availabilityRules,
+    blockedSlots,
+    bookings,
+    maxDaysToShow = 14,
+  } = input;
+
+  const now = DateTime.now().setZone(profile.timezone);
+  const futureBookings = bookings.filter((booking) => booking.status === "confirmed");
+  const visibleDays: BookingSlot[] = [];
+
+  for (
+    let dayOffset = 0;
+    dayOffset < profile.bookingWindowDays && visibleDays.length < maxDaysToShow;
+    dayOffset += 1
+  ) {
+    const day = now.startOf("day").plus({ days: dayOffset });
+    const rule = availabilityRules.find(
+      (item) => item.isActive && item.weekday === day.weekday,
+    );
+
+    if (!rule) continue;
+
+    const startOfDay = DateTime.fromISO(`${day.toISODate()}T${rule.startTime}`, {
+      zone: profile.timezone,
+    });
+    const endOfDay = DateTime.fromISO(`${day.toISODate()}T${rule.endTime}`, {
+      zone: profile.timezone,
+    });
+
+    if (!startOfDay.isValid || !endOfDay.isValid || endOfDay <= startOfDay) continue;
+
+    const lastPossibleStart = endOfDay.minus({
+      minutes: service.durationMinutes,
+    });
+
+    const times: string[] = [];
+
+    for (
+      let slotStart = startOfDay;
+      slotStart <= lastPossibleStart;
+      slotStart = slotStart.plus({ minutes: profile.slotIntervalMinutes })
+    ) {
+      if (slotStart < now) continue;
+
+      const slotEnd = slotStart.plus({ minutes: service.durationMinutes });
+      const slotBusyEnd = slotEnd.plus({ minutes: profile.bufferMinutes });
+
+      const intersectsBooking = futureBookings.some((booking) => {
+        const bookingStart = DateTime.fromISO(booking.startsAt, { zone: "utc" }).setZone(
+          profile.timezone,
+        );
+        const bookingBusyEnd = DateTime.fromISO(booking.endsAt, { zone: "utc" })
+          .setZone(profile.timezone)
+          .plus({ minutes: profile.bufferMinutes });
+
+        return overlaps(slotStart, slotBusyEnd, bookingStart, bookingBusyEnd);
+      });
+
+      if (intersectsBooking) continue;
+
+      const intersectsBlockedSlot = blockedSlots.some((blockedSlot) => {
+        const blockedStart = DateTime.fromISO(blockedSlot.startsAt, {
+          zone: "utc",
+        }).setZone(profile.timezone);
+        const blockedEnd = DateTime.fromISO(blockedSlot.endsAt, { zone: "utc" }).setZone(
+          profile.timezone,
+        );
+
+        return overlaps(slotStart, slotBusyEnd, blockedStart, blockedEnd);
+      });
+
+      if (intersectsBlockedSlot) continue;
+
+      times.push(slotStart.toFormat("HH:mm"));
+    }
+
+    if (times.length > 0) {
+      visibleDays.push({
+        date: day.setLocale("ru").toFormat("d LLLL"),
+        value: day.toISODate() ?? "",
+        times,
+      });
+    }
+  }
+
+  return visibleDays;
+}

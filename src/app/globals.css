@@ -1,26 +1,88 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --font-manrope: "Manrope", "Avenir Next", "Segoe UI", sans-serif;
+  --font-geist-mono: "Geist Mono", "SFMono-Regular", "SF Mono", "Menlo", monospace;
+  --color-background: #faf7f1;
+  --color-panel: #eee7dc;
+  --color-panel-strong: #e3d8c7;
+  --color-line: #d3c5b3;
+  --color-ink: #23241f;
+  --color-ink-soft: #434239;
+  --color-muted: #656055;
+  --color-accent: #b8d3c4;
+  --color-accent-soft: #eef6f0;
+  --color-accent-deep: #4b6d5b;
+  --color-success: #3f7b5a;
+  --color-success-soft: #e6f3eb;
+  --color-warning: #8e6c2f;
+  --color-warning-soft: #f5ecdb;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --color-background: var(--color-background);
+  --color-foreground: var(--color-ink);
+  --font-sans: var(--font-manrope);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  min-height: 100vh;
+  background: var(--color-background);
+  color: var(--color-ink);
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  text-decoration: none;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button,
+a,
+[role="button"],
+input[type="button"],
+input[type="submit"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+::selection {
+  background: rgba(184, 211, 196, 0.65);
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

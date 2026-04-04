@@ -1,0 +1,181 @@
+"use client";
+
+import { useState } from "react";
+import {
+  BellRing,
+  CalendarRange,
+  Globe2,
+  ShieldCheck,
+  SlidersHorizontal,
+  UserRound,
+  Wrench,
+} from "lucide-react";
+import type { AvailabilityRule, Profile, Service } from "@/lib/mock-data";
+import { Card } from "@/components/ui/card";
+import {
+  AccessSettingsForm,
+  AvailabilitySettingsForm,
+  BookingPreferencesForm,
+  ProfileSettingsForm,
+  ServicesSettingsForm,
+} from "@/components/forms/settings-forms";
+import { ButtonLink } from "@/components/ui/button";
+
+const tabs = [
+  { id: "profile", label: "Профиль" },
+  { id: "schedule", label: "Расписание" },
+  { id: "services", label: "Услуги" },
+  { id: "booking", label: "Запись" },
+  { id: "account", label: "Аккаунт" },
+] as const;
+
+export function SettingsTabs({
+  profile,
+  services,
+  availabilityRules,
+}: {
+  profile: Profile;
+  services: Service[];
+  availabilityRules: AvailabilityRule[];
+}) {
+  const [activeTab, setActiveTab] =
+    useState<(typeof tabs)[number]["id"]>("profile");
+
+  return (
+    <div className="space-y-6">
+      <div className="overflow-x-auto border-b border-[var(--color-line)]">
+        <div className="flex min-w-max gap-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`touch-manipulation border-b-2 px-4 py-3 text-sm transition active:scale-[0.98] ${
+                activeTab === tab.id
+                  ? "border-[var(--color-ink)] font-medium text-[var(--color-ink)]"
+                  : "border-transparent text-[var(--color-muted)] hover:text-[var(--color-ink)]"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {activeTab === "profile" ? (
+        <div className="space-y-6">
+          <Card className="space-y-4">
+            <div className="flex items-center gap-3">
+              <UserRound size={18} className="text-[var(--color-accent-deep)]" />
+              <h2 className="text-xl font-semibold text-[var(--color-ink)]">О мастере</h2>
+            </div>
+            <ProfileSettingsForm profile={profile} />
+          </Card>
+
+          <Card className="space-y-4">
+            <div className="flex items-center gap-3">
+              <Globe2 size={18} className="text-[var(--color-warning)]" />
+              <h2 className="text-xl font-semibold text-[var(--color-ink)]">
+                Публичная ссылка
+              </h2>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] bg-[var(--color-panel)] px-4 py-4">
+              <span className="text-sm font-medium text-[var(--color-accent-deep)]">
+                okno.app/{profile.username}
+              </span>
+              <ButtonLink href={`/${profile.username}`} variant="secondary" className="min-h-10 px-4 py-2">
+                Открыть
+              </ButtonLink>
+            </div>
+            <p className="text-xs text-[var(--color-muted)]">
+              Поделись этой ссылкой, и клиенты смогут записаться без регистрации.
+            </p>
+          </Card>
+        </div>
+      ) : null}
+
+      {activeTab === "schedule" ? (
+        <Card className="space-y-4">
+          <div className="flex items-center gap-3">
+            <CalendarRange size={18} className="text-[var(--color-accent-deep)]" />
+            <h2 className="text-xl font-semibold text-[var(--color-ink)]">
+              Рабочие дни и часы
+            </h2>
+          </div>
+          <AvailabilitySettingsForm availabilityRules={availabilityRules} />
+        </Card>
+      ) : null}
+
+      {activeTab === "services" ? (
+        <Card className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Wrench size={18} className="text-[var(--color-warning)]" />
+            <h2 className="text-xl font-semibold text-[var(--color-ink)]">Услуги</h2>
+          </div>
+          <ServicesSettingsForm services={services} />
+        </Card>
+      ) : null}
+
+      {activeTab === "booking" ? (
+        <div className="space-y-6">
+          <Card className="space-y-4">
+            <div className="flex items-center gap-3">
+              <SlidersHorizontal size={18} className="text-[var(--color-warning)]" />
+              <h2 className="text-xl font-semibold text-[var(--color-ink)]">
+                Параметры записи
+              </h2>
+            </div>
+            <BookingPreferencesForm profile={profile} />
+          </Card>
+
+          <Card className="space-y-4">
+            <div className="flex items-center gap-3">
+              <BellRing size={18} className="text-[var(--color-success)]" />
+              <h2 className="text-xl font-semibold text-[var(--color-ink)]">
+                Telegram-уведомления
+              </h2>
+            </div>
+            <div className="rounded-[18px] bg-[var(--color-panel)] p-4">
+              <p className="text-sm font-medium text-[var(--color-ink)]">
+                {profile.telegramChatId ? "Бот подключен" : "Бот не подключен"}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
+                Подключи Telegram, чтобы получать уведомления о новых записях и быстрее
+                реагировать на изменения.
+              </p>
+            </div>
+          </Card>
+        </div>
+      ) : null}
+
+      {activeTab === "account" ? (
+        <div className="space-y-6">
+          <Card className="space-y-4">
+            <div className="flex items-center gap-3">
+              <ShieldCheck size={18} className="text-[var(--color-ink)]" />
+              <h2 className="text-xl font-semibold text-[var(--color-ink)]">
+                Доступ к аккаунту
+              </h2>
+            </div>
+            <AccessSettingsForm profile={profile} />
+          </Card>
+
+          <Card className="space-y-4">
+            <h2 className="text-xl font-semibold text-[var(--color-danger, #b14f4f)]">
+              Удалить аккаунт
+            </h2>
+            <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
+              Все данные, записи и клиенты будут удалены без возможности восстановления.
+            </p>
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#d8b1b1] px-5 py-3 text-sm font-medium text-[#b14f4f] transition duration-300 hover:bg-[#fff5f5]"
+            >
+              Удалить аккаунт
+            </button>
+          </Card>
+        </div>
+      ) : null}
+    </div>
+  );
+}
