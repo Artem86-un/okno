@@ -12,9 +12,16 @@ type SelectProps = React.SelectHTMLAttributes<HTMLSelectElement> & {
 export function Select({ label, hint, options, ...props }: SelectProps) {
   return (
     <label className="flex flex-col gap-2 text-sm">
-      <span className="font-medium text-[var(--color-ink)]">{label}</span>
+      <span className="font-medium" style={{ color: "var(--color-ink, #23241f)" }}>
+        {label}
+      </span>
       <select
-        className="min-h-12 rounded-2xl border border-[var(--color-line)] bg-white px-4 text-[15px] text-[var(--color-ink)] outline-none transition focus:border-[var(--color-accent)]"
+        style={{
+          borderColor: "var(--color-line, #d3c5b3)",
+          backgroundColor: "#ffffff",
+          color: "var(--color-ink, #23241f)",
+        }}
+        className="min-h-12 rounded-2xl border px-4 text-[15px] outline-none transition"
         {...props}
       >
         {options.map((option) => (
@@ -23,7 +30,11 @@ export function Select({ label, hint, options, ...props }: SelectProps) {
           </option>
         ))}
       </select>
-      {hint ? <span className="text-xs text-[var(--color-muted)]">{hint}</span> : null}
+      {hint ? (
+        <span className="text-xs" style={{ color: "var(--color-muted, #656055)" }}>
+          {hint}
+        </span>
+      ) : null}
     </label>
   );
 }

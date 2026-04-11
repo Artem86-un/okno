@@ -9,13 +9,13 @@ export function SectionTitle({
 }) {
   return (
     <div className="max-w-2xl space-y-3">
-      <p className="text-sm font-medium uppercase tracking-[0.24em] text-[var(--color-muted)]">
+      <p className="text-sm font-medium uppercase tracking-[0.24em] text-muted">
         {eyebrow}
       </p>
-      <h2 className="text-3xl font-semibold tracking-tight text-[var(--color-ink)] sm:text-4xl">
+      <h2 className="text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
         {title}
       </h2>
-      <p className="text-base leading-7 text-[var(--color-ink-soft)] sm:text-lg">
+      <p className="text-base leading-7 text-ink-soft sm:text-lg">
         {description}
       </p>
     </div>

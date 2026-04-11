@@ -10,7 +10,7 @@ const items = [
 
 export function DashboardTabs({ current }: { current: string }) {
   return (
-    <div className="inline-flex rounded-full border border-[var(--color-line)] bg-white p-1">
+    <div className="inline-flex rounded-full border border-line bg-white p-1">
       {items.map((item) => (
         <Link
           key={item.href}
@@ -18,8 +18,8 @@ export function DashboardTabs({ current }: { current: string }) {
           className={cn(
             "rounded-full px-4 py-2 text-sm transition",
             current === item.href
-              ? "bg-[var(--color-ink)] text-white"
-              : "text-[var(--color-ink-soft)] hover:bg-[var(--color-panel)]",
+              ? "bg-ink text-white"
+              : "text-ink-soft hover:bg-panel",
           )}
         >
           {item.label}

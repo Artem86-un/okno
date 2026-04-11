@@ -20,7 +20,7 @@ export default async function PublicProfilePage({ params }: Props) {
       <div className="mx-auto max-w-5xl space-y-6 py-4">
         <Card className="overflow-hidden p-0">
           <div className="grid gap-0 lg:grid-cols-[0.75fr_1.25fr]">
-            <div className="relative min-h-72 bg-[var(--color-panel)]">
+            <div className="relative min-h-72 bg-panel">
               <Image
                 src={profile.avatarUrl}
                 alt={profile.fullName}
@@ -34,18 +34,18 @@ export default async function PublicProfilePage({ params }: Props) {
             <div className="space-y-5 p-6 sm:p-8">
               <Badge tone="accent">@{username}</Badge>
               <div>
-                <h1 className="text-4xl font-semibold text-[var(--color-ink)]">{profile.fullName}</h1>
-                <p className="mt-2 text-lg text-[var(--color-ink-soft)]">{profile.specialty}</p>
+                <h1 className="text-4xl font-semibold text-ink">{profile.fullName}</h1>
+                <p className="mt-2 text-lg text-ink-soft">{profile.specialty}</p>
               </div>
-              <p className="max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
+              <p className="max-w-2xl text-sm leading-7 text-ink-soft">
                 {profile.bio}
               </p>
-              <div className="flex flex-wrap gap-3 text-sm text-[var(--color-muted)]">
-                <span className="inline-flex items-center gap-2 rounded-full bg-[var(--color-panel)] px-3 py-2">
+              <div className="flex flex-wrap gap-3 text-sm text-muted">
+                <span className="inline-flex items-center gap-2 rounded-full bg-panel px-3 py-2">
                   <MapPin size={16} />
                   {profile.locationText}
                 </span>
-                <span className="inline-flex items-center gap-2 rounded-full bg-[var(--color-panel)] px-3 py-2">
+                <span className="inline-flex items-center gap-2 rounded-full bg-panel px-3 py-2">
                   <MessageCircleHeart size={16} />
                   Подтверждение на сайте + SMS
                 </span>
@@ -62,14 +62,14 @@ export default async function PublicProfilePage({ params }: Props) {
             <Card key={service.id}>
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="space-y-2">
-                  <h2 className="text-2xl font-semibold text-[var(--color-ink)]">{service.title}</h2>
-                  <p className="max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
+                  <h2 className="text-2xl font-semibold text-ink">{service.title}</h2>
+                  <p className="max-w-2xl text-sm leading-7 text-ink-soft">
                     {service.description}
                   </p>
                 </div>
-                <div className="text-right text-[var(--color-ink-soft)]">
+                <div className="text-right text-ink-soft">
                   <p>{service.durationMinutes} мин</p>
-                  <p className="mt-1 text-2xl font-semibold text-[var(--color-ink)]">
+                  <p className="mt-1 text-2xl font-semibold text-ink">
                     {formatCurrency(service.price)}
                   </p>
                 </div>

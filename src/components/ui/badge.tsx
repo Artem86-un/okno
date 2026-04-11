@@ -8,18 +8,28 @@ export function Badge({
   tone?: "neutral" | "success" | "accent" | "warning";
 }) {
   const tones = {
-    neutral: "bg-[var(--color-panel)] text-[var(--color-ink-soft)]",
-    success: "bg-[var(--color-success-soft)] text-[var(--color-success)]",
-    accent: "bg-[var(--color-accent-soft)] text-[var(--color-accent-deep)]",
-    warning: "bg-[var(--color-warning-soft)] text-[var(--color-warning)]",
+    neutral: {
+      backgroundColor: "var(--color-panel, #eee7dc)",
+      color: "var(--color-ink-soft, #434239)",
+    },
+    success: {
+      backgroundColor: "var(--color-success-soft, #e6f3eb)",
+      color: "var(--color-success, #3f7b5a)",
+    },
+    accent: {
+      backgroundColor: "var(--color-accent-soft, #eef6f0)",
+      color: "var(--color-accent-deep, #4b6d5b)",
+    },
+    warning: {
+      backgroundColor: "var(--color-warning-soft, #f5ecdb)",
+      color: "var(--color-warning, #8e6c2f)",
+    },
   };
 
   return (
     <span
-      className={cn(
-        "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium",
-        tones[tone],
-      )}
+      style={tones[tone]}
+      className={cn("inline-flex items-center rounded-full px-3 py-1 text-xs font-medium")}
     >
       {children}
     </span>

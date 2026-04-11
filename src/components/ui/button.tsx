@@ -11,12 +11,21 @@ type ButtonLinkProps = React.ComponentProps<typeof Link> & {
 };
 
 const styles = {
-  primary:
-    "bg-[var(--color-ink)] text-white hover:-translate-y-0.5 hover:bg-[var(--color-ink-soft)] active:scale-[0.98]",
-  secondary:
-    "bg-white text-[var(--color-ink)] ring-1 ring-[var(--color-line)] hover:-translate-y-0.5 hover:bg-[var(--color-panel)] active:scale-[0.98]",
-  ghost:
-    "bg-transparent text-[var(--color-ink)] hover:bg-[var(--color-panel)] active:scale-[0.98]",
+  primary: {
+    backgroundColor: "var(--color-ink, #23241f)",
+    color: "#ffffff",
+    border: "1px solid transparent",
+  },
+  secondary: {
+    backgroundColor: "#ffffff",
+    color: "var(--color-ink, #23241f)",
+    border: "1px solid var(--color-line, #d3c5b3)",
+  },
+  ghost: {
+    backgroundColor: "transparent",
+    color: "var(--color-ink, #23241f)",
+    border: "1px solid transparent",
+  },
 };
 
 export function Button({
@@ -27,9 +36,9 @@ export function Button({
   return (
     <button
       type={props.type ?? "button"}
+      style={styles[variant]}
       className={cn(
-        "inline-flex min-h-11 items-center justify-center rounded-full px-5 py-3 text-sm font-medium transition duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2",
-        styles[variant],
+        "inline-flex min-h-11 items-center justify-center rounded-full px-5 py-3 text-sm font-medium transition duration-300 hover:-translate-y-0.5 active:scale-[0.98] focus-visible:outline-none",
         className,
       )}
       {...props}
@@ -44,9 +53,9 @@ export function ButtonLink({
 }: ButtonLinkProps) {
   return (
     <Link
+      style={styles[variant]}
       className={cn(
-        "inline-flex min-h-11 items-center justify-center rounded-full px-5 py-3 text-sm font-medium transition duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2",
-        styles[variant],
+        "inline-flex min-h-11 items-center justify-center rounded-full px-5 py-3 text-sm font-medium transition duration-300 hover:-translate-y-0.5 active:scale-[0.98] focus-visible:outline-none",
         className,
       )}
       {...props}

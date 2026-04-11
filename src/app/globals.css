@@ -26,6 +26,86 @@
   --font-mono: var(--font-geist-mono);
 }
 
+.bg-ink {
+  background-color: var(--color-ink, #23241f);
+}
+
+.bg-ink-soft {
+  background-color: var(--color-ink-soft, #434239);
+}
+
+.bg-panel {
+  background-color: var(--color-panel, #eee7dc);
+}
+
+.bg-panel-strong {
+  background-color: var(--color-panel-strong, #e3d8c7);
+}
+
+.bg-accent {
+  background-color: var(--color-accent, #b8d3c4);
+}
+
+.bg-accent-soft {
+  background-color: var(--color-accent-soft, #eef6f0);
+}
+
+.bg-success-soft {
+  background-color: var(--color-success-soft, #e6f3eb);
+}
+
+.bg-warning-soft {
+  background-color: var(--color-warning-soft, #f5ecdb);
+}
+
+.text-ink {
+  color: var(--color-ink, #23241f);
+}
+
+.text-ink-soft {
+  color: var(--color-ink-soft, #434239);
+}
+
+.text-muted {
+  color: var(--color-muted, #656055);
+}
+
+.text-accent-deep {
+  color: var(--color-accent-deep, #4b6d5b);
+}
+
+.text-success {
+  color: var(--color-success, #3f7b5a);
+}
+
+.text-warning {
+  color: var(--color-warning, #8e6c2f);
+}
+
+.border-line {
+  border-color: var(--color-line, #d3c5b3);
+}
+
+.border-ink {
+  border-color: var(--color-ink, #23241f);
+}
+
+.border-ink-soft {
+  border-color: var(--color-ink-soft, #434239);
+}
+
+.border-accent {
+  border-color: var(--color-accent, #b8d3c4);
+}
+
+.ring-accent {
+  --tw-ring-color: var(--color-accent, #b8d3c4);
+}
+
+.ring-line {
+  --tw-ring-color: var(--color-line, #d3c5b3);
+}
+
 * {
   box-sizing: border-box;
 }

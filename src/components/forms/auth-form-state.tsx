@@ -16,7 +16,11 @@ export function SubmitButton({
   return (
     <button
       type="submit"
-      className={`inline-flex min-h-11 items-center justify-center rounded-full bg-[var(--color-ink)] px-5 py-3 text-sm font-medium text-white transition hover:-translate-y-0.5 hover:bg-[var(--color-ink-soft)] disabled:cursor-not-allowed disabled:opacity-60 ${className ?? ""}`}
+      style={{
+        backgroundColor: "var(--color-ink, #23241f)",
+        color: "#ffffff",
+      }}
+      className={`inline-flex min-h-11 items-center justify-center rounded-full px-5 py-3 text-sm font-medium transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 ${className ?? ""}`}
       disabled={pending}
     >
       {pending ? pendingLabel : idleLabel}
@@ -35,11 +39,18 @@ export function FormMessage({
 
   return (
     <p
-      className={`rounded-2xl px-4 py-3 text-sm ${
+      style={
         success
-          ? "bg-[var(--color-success-soft)] text-[var(--color-success)]"
-          : "bg-[var(--color-warning-soft)] text-[var(--color-warning)]"
-      }`}
+          ? {
+              backgroundColor: "var(--color-success-soft, #e6f3eb)",
+              color: "var(--color-success, #3f7b5a)",
+            }
+          : {
+              backgroundColor: "var(--color-warning-soft, #f5ecdb)",
+              color: "var(--color-warning, #8e6c2f)",
+            }
+      }
+      className="rounded-2xl px-4 py-3 text-sm"
     >
       {message}
     </p>

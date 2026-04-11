@@ -56,7 +56,7 @@ export type Booking = {
   status: BookingStatus;
   startsAt: string;
   endsAt: string;
-  source: "public_page";
+  source: "public_page" | "manual";
   clientNote: string;
   cancellationToken: string;
   cancellationTokenExpiresAt: string;

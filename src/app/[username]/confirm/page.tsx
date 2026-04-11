@@ -30,18 +30,18 @@ export default async function ConfirmPage({
     <SiteShell compact hideGuestMenu>
       <div className="mx-auto max-w-3xl py-10">
         <Card className="space-y-6 text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-success-soft)]">
-            <CheckCircle2 size={28} className="text-[var(--color-success)]" />
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success-soft">
+            <CheckCircle2 size={28} className="text-success" />
           </div>
           <div className="space-y-3">
-            <h1 className="text-4xl font-semibold text-[var(--color-ink)]">Запись подтверждена</h1>
-            <p className="text-sm leading-7 text-[var(--color-ink-soft)]">
+            <h1 className="text-4xl font-semibold text-ink">Запись подтверждена</h1>
+            <p className="text-sm leading-7 text-ink-soft">
               {booking.clientName}, запись принята. Сохрани это время, чтобы не потерять его.
             </p>
           </div>
-          <div className="rounded-[28px] bg-[var(--color-panel)] p-5 text-left">
-            <p className="font-medium text-[var(--color-ink)]">{booking.serviceTitle}</p>
-            <p className="mt-2 text-sm text-[var(--color-ink-soft)]">{booking.startsAtLabel}</p>
+          <div className="rounded-[28px] bg-panel p-5 text-left">
+            <p className="font-medium text-ink">{booking.serviceTitle}</p>
+            <p className="mt-2 text-sm text-ink-soft">{booking.startsAtLabel}</p>
           </div>
           <div className="flex flex-wrap justify-center gap-3">
             <ButtonLink href={`/${username}`}>Вернуться к мастеру</ButtonLink>

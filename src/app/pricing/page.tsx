@@ -16,10 +16,10 @@ export default async function PricingPage() {
       <div className="space-y-8 py-6">
         <div className="space-y-4">
           <Badge tone="accent">Тарифы без агрессии</Badge>
-          <h1 className="max-w-3xl text-5xl font-semibold tracking-tight text-[var(--color-ink)]">
+          <h1 className="max-w-3xl text-5xl font-semibold tracking-tight text-ink">
             Бесплатный тариф запускает, платный помогает расти.
           </h1>
-          <p className="max-w-2xl text-lg leading-8 text-[var(--color-ink-soft)]">
+          <p className="max-w-2xl text-lg leading-8 text-ink-soft">
             В MVP нет checkout, но логика лимитов уже продумана: мастер заранее видит
             остаток записей, а не упирается в стену неожиданно.
           </p>
@@ -47,22 +47,22 @@ export default async function PricingPage() {
           {pricingPlans.map((plan) => (
             <Card
               key={plan.title}
-              className={plan.title === "okno Pro" ? "bg-[var(--color-panel)]" : ""}
+              className={plan.title === "okno Pro" ? "bg-panel" : ""}
             >
-              <p className="text-sm uppercase tracking-[0.24em] text-[var(--color-ink-soft)]">
+              <p className="text-sm uppercase tracking-[0.24em] text-ink-soft">
                 {plan.title}
               </p>
-              <h2 className="mt-3 text-4xl font-semibold text-[var(--color-ink)]">
+              <h2 className="mt-3 text-4xl font-semibold text-ink">
                 {plan.price}
               </h2>
-              <p className="mt-3 text-base leading-7 text-[var(--color-ink-soft)]">
+              <p className="mt-3 text-base leading-7 text-ink-soft">
                 {plan.description}
               </p>
               <div className="mt-6 space-y-3">
                 {plan.features.map((feature) => (
                   <div key={feature} className="flex gap-3">
-                    <CheckCircle2 size={18} className="mt-1 shrink-0 text-[var(--color-success)]" />
-                    <p className="text-base leading-7 text-[var(--color-ink-soft)]">{feature}</p>
+                    <CheckCircle2 size={18} className="mt-1 shrink-0 text-success" />
+                    <p className="text-base leading-7 text-ink-soft">{feature}</p>
                   </div>
                 ))}
               </div>

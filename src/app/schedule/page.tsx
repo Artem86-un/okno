@@ -99,25 +99,26 @@ export default async function SchedulePage({ searchParams }: SchedulePageProps) 
   }
 
   const { availabilityRules, blockedSlots, bookings, profile } = data;
+  const activeBookings = bookings.filter((booking) => booking.status === "confirmed");
   const { view: rawView } = await searchParams;
   const view: ScheduleView = scheduleViews.some((item) => item.id === rawView)
     ? (rawView as ScheduleView)
     : "day";
-  const bookingGroups = buildScheduleGroups(bookings, profile.timezone, view);
+  const bookingGroups = buildScheduleGroups(activeBookings, profile.timezone, view);
 
   return (
-    <SiteShell compact>
+    <SiteShell compact showAccountNotifications>
       <div className="space-y-6 py-4">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="space-y-3">
             <Badge tone="accent">Расписание</Badge>
-            <h1 className="text-4xl font-semibold text-[var(--color-ink)]">Расписание и блокировки</h1>
+            <h1 className="text-4xl font-semibold text-ink">Расписание и блокировки</h1>
           </div>
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
           <Card className="space-y-4">
-            <div className="inline-flex w-fit rounded-full border border-[var(--color-line)] bg-[var(--color-panel)] p-1">
+            <div className="inline-flex w-fit rounded-full border border-line bg-panel p-1">
               {scheduleViews.map((item) => (
                 <Link
                   key={item.id}
@@ -125,8 +126,8 @@ export default async function SchedulePage({ searchParams }: SchedulePageProps) 
                   className={cn(
                     "rounded-full px-4 py-2 text-sm transition",
                     item.id === view
-                      ? "bg-white text-[var(--color-ink)] shadow-sm"
-                      : "text-[var(--color-muted)]",
+                      ? "bg-white text-ink shadow-sm"
+                      : "text-muted",
                   )}
                 >
                   {item.label}
@@ -137,8 +138,8 @@ export default async function SchedulePage({ searchParams }: SchedulePageProps) 
               {bookingGroups.map((group) => (
                 <div key={group.id} className="space-y-3">
                   <div className="flex items-center justify-between gap-3">
-                    <h2 className="text-lg font-semibold text-[var(--color-ink)]">{group.label}</h2>
-                    <span className="text-sm text-[var(--color-muted)]">
+                    <h2 className="text-lg font-semibold text-ink">{group.label}</h2>
+                    <span className="text-sm text-muted">
                       {group.bookings.length} {pluralizeScheduleBookings(group.bookings.length)}
                     </span>
                   </div>
@@ -150,14 +151,14 @@ export default async function SchedulePage({ searchParams }: SchedulePageProps) 
                       return (
                         <div
                           key={booking.id}
-                          className="rounded-[24px] border border-[var(--color-line)] p-4"
+                          className="rounded-[24px] border border-line p-4"
                         >
                           <div className="flex items-start justify-between gap-4">
                             <div>
-                              <p className="font-medium text-[var(--color-ink)]">
+                              <p className="font-medium text-ink">
                                 {startsAt.toFormat("cccc, d LLLL")}
                               </p>
-                              <p className="mt-1 text-sm text-[var(--color-ink-soft)]">
+                              <p className="mt-1 text-sm text-ink-soft">
                                 {startsAt.toFormat("HH:mm")} - {endsAt.toFormat("HH:mm")}
                               </p>
                             </div>
@@ -175,14 +176,14 @@ export default async function SchedulePage({ searchParams }: SchedulePageProps) 
           <div className="space-y-6">
             <Card className="space-y-4">
               <div className="flex items-center gap-3">
-                <Rows3 size={18} className="text-[var(--color-accent-deep)]" />
-                <h2 className="text-xl font-semibold text-[var(--color-ink)]">Рабочие часы</h2>
+                <Rows3 size={18} className="text-accent-deep" />
+                <h2 className="text-xl font-semibold text-ink">Рабочие часы</h2>
               </div>
               <div className="space-y-3">
                 {availabilityRules.map((rule) => (
-                  <div key={rule.id} className="flex items-center justify-between rounded-[20px] bg-[var(--color-panel)] px-4 py-3">
-                    <p className="font-medium text-[var(--color-ink)]">{weekdays[rule.weekday - 1]}</p>
-                    <p className="text-sm text-[var(--color-ink-soft)]">
+                  <div key={rule.id} className="flex items-center justify-between rounded-[20px] bg-panel px-4 py-3">
+                    <p className="font-medium text-ink">{weekdays[rule.weekday - 1]}</p>
+                    <p className="text-sm text-ink-soft">
                       {rule.startTime} - {rule.endTime}
                     </p>
                   </div>
@@ -192,8 +193,8 @@ export default async function SchedulePage({ searchParams }: SchedulePageProps) 
 
             <Card className="space-y-4">
               <div className="flex items-center gap-3">
-                <Lock size={18} className="text-[var(--color-warning)]" />
-                <h2 className="text-xl font-semibold text-[var(--color-ink)]">Ручные блокировки</h2>
+                <Lock size={18} className="text-warning" />
+                <h2 className="text-xl font-semibold text-ink">Ручные блокировки</h2>
               </div>
               <BlockedSlotsForm
                 blockedSlots={blockedSlots}

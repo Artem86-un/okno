@@ -118,15 +118,15 @@ export function BookingFlow({
   return (
     <Card className="space-y-6">
       <div className="space-y-3">
-        <div className="flex items-center gap-2 text-xs text-[var(--color-muted)]">
+        <div className="flex items-center gap-2 text-xs text-muted">
           {steps.map((item, index) => (
             <div key={item} className="flex items-center gap-2">
               <span
                 className={cn(
                   "flex h-8 w-8 items-center justify-center rounded-full border text-xs",
                   index <= step
-                    ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white"
-                    : "border-[var(--color-line)] bg-white text-[var(--color-muted)]",
+                    ? "border-ink bg-ink text-white"
+                    : "border-line bg-white text-muted",
                 )}
               >
                 {index < step ? <Check size={14} /> : index + 1}
@@ -135,9 +135,9 @@ export function BookingFlow({
             </div>
           ))}
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-[var(--color-panel)]">
+        <div className="h-2 overflow-hidden rounded-full bg-panel">
           <div
-            className="h-full rounded-full bg-[var(--color-accent)] transition-all"
+            className="h-full rounded-full bg-accent transition-all"
             style={{ width: `${((step + 1) / steps.length) * 100}%` }}
           />
         </div>
@@ -153,18 +153,18 @@ export function BookingFlow({
               className={cn(
                 "touch-manipulation rounded-[24px] border p-4 text-left transition active:scale-[0.99]",
                 service.id === serviceId
-                  ? "border-[var(--color-accent)] bg-[var(--color-accent-soft)]"
-                  : "border-[var(--color-line)] bg-white hover:bg-[var(--color-panel)]",
+                  ? "border-accent bg-accent-soft"
+                  : "border-line bg-white hover:bg-panel",
               )}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">
-                  <p className="font-medium text-[var(--color-ink)]">{service.title}</p>
-                  <p className="text-sm leading-6 text-[var(--color-muted)]">
+                  <p className="font-medium text-ink">{service.title}</p>
+                  <p className="text-sm leading-6 text-muted">
                     {service.description}
                   </p>
                 </div>
-                <div className="text-right text-sm text-[var(--color-ink-soft)]">
+                <div className="text-right text-sm text-ink-soft">
                   <p>{service.durationMinutes} мин</p>
                   <p>{formatCurrency(service.price)}</p>
                 </div>
@@ -177,7 +177,7 @@ export function BookingFlow({
       {step === 1 ? (
         <div className="space-y-8">
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold uppercase tracking-[0.08em] text-[var(--color-ink)]">
+            <h2 className="text-lg font-semibold uppercase tracking-[0.08em] text-ink">
               Выберите дату
             </h2>
             {bookingSlots.length > 0 ? (
@@ -201,8 +201,8 @@ export function BookingFlow({
                           className={cn(
                             "flex min-w-[78px] flex-col items-center rounded-[18px] border px-4 py-3 text-center transition",
                             slot.value === dateValue
-                              ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white"
-                              : "border-[var(--color-line)] bg-white text-[var(--color-ink)]",
+                              ? "border-ink bg-ink text-white"
+                              : "border-line bg-white text-ink",
                           )}
                         >
                           <p
@@ -210,7 +210,7 @@ export function BookingFlow({
                               "text-[11px] font-medium uppercase tracking-[0.08em]",
                               slot.value === dateValue
                                 ? "text-white/70"
-                                : "text-[var(--color-ink-soft)]",
+                                : "text-ink-soft",
                             )}
                           >
                             {weekdayLabel}
@@ -241,15 +241,15 @@ export function BookingFlow({
                         onClick={() => setDateValue(slot.value)}
                         className="touch-manipulation space-y-3 text-center active:scale-[0.99]"
                       >
-                        <p className="text-sm font-medium uppercase text-[var(--color-ink-soft)]">
+                        <p className="text-sm font-medium uppercase text-ink-soft">
                           {weekdayLabel}
                         </p>
                         <div
                           className={cn(
                             "rounded-2xl border px-4 py-3 text-xl font-medium transition",
                             slot.value === dateValue
-                              ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white"
-                              : "border-[var(--color-line)] bg-white text-[var(--color-ink)] hover:bg-[var(--color-panel)]",
+                              ? "border-ink bg-ink text-white"
+                              : "border-line bg-white text-ink hover:bg-panel",
                           )}
                         >
                           {dayNumber}
@@ -260,14 +260,14 @@ export function BookingFlow({
                 </div>
               </>
             ) : (
-              <div className="rounded-[24px] border border-dashed border-[var(--color-line)] p-5 text-sm leading-6 text-[var(--color-muted)]">
+              <div className="rounded-[24px] border border-dashed border-line p-5 text-sm leading-6 text-muted">
                 На ближайшие дни свободного времени пока нет. Попробуй выбрать другую услугу или зайди позже.
               </div>
             )}
           </div>
 
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold uppercase tracking-[0.08em] text-[var(--color-ink)]">
+            <h2 className="text-lg font-semibold uppercase tracking-[0.08em] text-ink">
               Свободное время
             </h2>
             {selectedDate && selectedDate.times.length > 0 ? (
@@ -281,8 +281,8 @@ export function BookingFlow({
                       className={cn(
                         "touch-manipulation snap-start shrink-0 rounded-[18px] border px-5 py-3 text-center text-lg font-semibold transition active:scale-[0.99]",
                         slotTime === time
-                          ? "border-[var(--color-ink)] bg-[var(--color-ink)] text-white"
-                          : "border-[var(--color-line)] bg-white text-[var(--color-ink)]",
+                          ? "border-ink bg-ink text-white"
+                          : "border-line bg-white text-ink",
                       )}
                     >
                       {slotTime}
@@ -299,8 +299,8 @@ export function BookingFlow({
                       className={cn(
                         "touch-manipulation rounded-[22px] px-4 py-4 text-center text-2xl font-medium transition active:scale-[0.99]",
                         slotTime === time
-                          ? "bg-[var(--color-ink)] text-white"
-                          : "bg-transparent text-[var(--color-ink)] hover:bg-[var(--color-panel)]",
+                          ? "bg-ink text-white"
+                          : "bg-transparent text-ink hover:bg-panel",
                       )}
                     >
                       {slotTime}
@@ -309,7 +309,7 @@ export function BookingFlow({
                 </div>
               </>
             ) : selectedDate ? (
-              <div className="rounded-[24px] border border-dashed border-[var(--color-line)] p-5 text-sm leading-6 text-[var(--color-muted)]">
+              <div className="rounded-[24px] border border-dashed border-line p-5 text-sm leading-6 text-muted">
                 На эту дату свободного времени уже нет.
               </div>
             ) : null}
@@ -343,8 +343,8 @@ export function BookingFlow({
       ) : null}
 
       {step === steps.length - 1 ? (
-        <div className="rounded-[24px] bg-[var(--color-panel)] p-4 text-sm text-[var(--color-ink-soft)]">
-          <p className="font-medium text-[var(--color-ink)]">Что вы выбрали</p>
+        <div className="rounded-[24px] bg-panel p-4 text-sm text-ink-soft">
+          <p className="font-medium text-ink">Что вы выбрали</p>
           <p className="mt-2">
             {selectedService?.title} • {selectedDateLabel} • {time}
           </p>
@@ -352,7 +352,7 @@ export function BookingFlow({
       ) : null}
 
       {error ? (
-        <div className="rounded-[20px] bg-[var(--color-warning-soft)] px-4 py-3 text-sm text-[var(--color-warning)]">
+        <div className="rounded-[20px] bg-warning-soft px-4 py-3 text-sm text-warning">
           {error}
         </div>
       ) : null}

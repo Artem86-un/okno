@@ -43,7 +43,7 @@ export function SettingsTabs({
 
   return (
     <div className="space-y-6">
-      <div className="overflow-x-auto border-b border-[var(--color-line)]">
+      <div className="overflow-x-auto border-b border-line">
         <div className="flex min-w-max gap-1">
           {tabs.map((tab) => (
             <button
@@ -52,8 +52,8 @@ export function SettingsTabs({
               onClick={() => setActiveTab(tab.id)}
               className={`touch-manipulation border-b-2 px-4 py-3 text-sm transition active:scale-[0.98] ${
                 activeTab === tab.id
-                  ? "border-[var(--color-ink)] font-medium text-[var(--color-ink)]"
-                  : "border-transparent text-[var(--color-muted)] hover:text-[var(--color-ink)]"
+                  ? "border-ink font-medium text-ink"
+                  : "border-transparent text-muted hover:text-ink"
               }`}
             >
               {tab.label}
@@ -66,28 +66,28 @@ export function SettingsTabs({
         <div className="space-y-6">
           <Card className="space-y-4">
             <div className="flex items-center gap-3">
-              <UserRound size={18} className="text-[var(--color-accent-deep)]" />
-              <h2 className="text-xl font-semibold text-[var(--color-ink)]">О мастере</h2>
+              <UserRound size={18} className="text-accent-deep" />
+              <h2 className="text-xl font-semibold text-ink">О мастере</h2>
             </div>
             <ProfileSettingsForm profile={profile} />
           </Card>
 
           <Card className="space-y-4">
             <div className="flex items-center gap-3">
-              <Globe2 size={18} className="text-[var(--color-warning)]" />
-              <h2 className="text-xl font-semibold text-[var(--color-ink)]">
+              <Globe2 size={18} className="text-warning" />
+              <h2 className="text-xl font-semibold text-ink">
                 Публичная ссылка
               </h2>
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] bg-[var(--color-panel)] px-4 py-4">
-              <span className="text-sm font-medium text-[var(--color-accent-deep)]">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] bg-panel px-4 py-4">
+              <span className="text-sm font-medium text-accent-deep">
                 okno.app/{profile.username}
               </span>
               <ButtonLink href={`/${profile.username}`} variant="secondary" className="min-h-10 px-4 py-2">
                 Открыть
               </ButtonLink>
             </div>
-            <p className="text-xs text-[var(--color-muted)]">
+            <p className="text-xs text-muted">
               Поделись этой ссылкой, и клиенты смогут записаться без регистрации.
             </p>
           </Card>
@@ -97,8 +97,8 @@ export function SettingsTabs({
       {activeTab === "schedule" ? (
         <Card className="space-y-4">
           <div className="flex items-center gap-3">
-            <CalendarRange size={18} className="text-[var(--color-accent-deep)]" />
-            <h2 className="text-xl font-semibold text-[var(--color-ink)]">
+            <CalendarRange size={18} className="text-accent-deep" />
+            <h2 className="text-xl font-semibold text-ink">
               Рабочие дни и часы
             </h2>
           </div>
@@ -109,8 +109,8 @@ export function SettingsTabs({
       {activeTab === "services" ? (
         <Card className="space-y-4">
           <div className="flex items-center gap-3">
-            <Wrench size={18} className="text-[var(--color-warning)]" />
-            <h2 className="text-xl font-semibold text-[var(--color-ink)]">Услуги</h2>
+            <Wrench size={18} className="text-warning" />
+            <h2 className="text-xl font-semibold text-ink">Услуги</h2>
           </div>
           <ServicesSettingsForm services={services} />
         </Card>
@@ -120,8 +120,8 @@ export function SettingsTabs({
         <div className="space-y-6">
           <Card className="space-y-4">
             <div className="flex items-center gap-3">
-              <SlidersHorizontal size={18} className="text-[var(--color-warning)]" />
-              <h2 className="text-xl font-semibold text-[var(--color-ink)]">
+              <SlidersHorizontal size={18} className="text-warning" />
+              <h2 className="text-xl font-semibold text-ink">
                 Параметры записи
               </h2>
             </div>
@@ -130,16 +130,16 @@ export function SettingsTabs({
 
           <Card className="space-y-4">
             <div className="flex items-center gap-3">
-              <BellRing size={18} className="text-[var(--color-success)]" />
-              <h2 className="text-xl font-semibold text-[var(--color-ink)]">
+              <BellRing size={18} className="text-success" />
+              <h2 className="text-xl font-semibold text-ink">
                 Telegram-уведомления
               </h2>
             </div>
-            <div className="rounded-[18px] bg-[var(--color-panel)] p-4">
-              <p className="text-sm font-medium text-[var(--color-ink)]">
+            <div className="rounded-[18px] bg-panel p-4">
+              <p className="text-sm font-medium text-ink">
                 {profile.telegramChatId ? "Бот подключен" : "Бот не подключен"}
               </p>
-              <p className="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">
+              <p className="mt-2 text-sm leading-6 text-ink-soft">
                 Подключи Telegram, чтобы получать уведомления о новых записях и быстрее
                 реагировать на изменения.
               </p>
@@ -152,8 +152,8 @@ export function SettingsTabs({
         <div className="space-y-6">
           <Card className="space-y-4">
             <div className="flex items-center gap-3">
-              <ShieldCheck size={18} className="text-[var(--color-ink)]" />
-              <h2 className="text-xl font-semibold text-[var(--color-ink)]">
+              <ShieldCheck size={18} className="text-ink" />
+              <h2 className="text-xl font-semibold text-ink">
                 Доступ к аккаунту
               </h2>
             </div>
@@ -164,7 +164,7 @@ export function SettingsTabs({
             <h2 className="text-xl font-semibold text-[var(--color-danger, #b14f4f)]">
               Удалить аккаунт
             </h2>
-            <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
+            <p className="text-sm leading-6 text-ink-soft">
               Все данные, записи и клиенты будут удалены без возможности восстановления.
             </p>
             <button

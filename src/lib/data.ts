@@ -19,6 +19,16 @@ import { buildBookingSlotsForService } from "@/lib/slots";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+export type AccountNotificationItem = {
+  id: string;
+  title: string;
+  description: string;
+  href: string;
+  tone: "neutral" | "success" | "accent" | "warning";
+  createdAt: string;
+  createdAtLabel: string;
+};
+
 function mapProfile(row: Record<string, unknown>): Profile {
   return {
     id: String(row.id),
@@ -77,6 +87,10 @@ function mapClient(row: Record<string, unknown>) {
 }
 
 function mapBooking(row: Record<string, unknown>) {
+  const source = (row.source === "manual" ? "manual" : "public_page") as
+    | "manual"
+    | "public_page";
+
   return {
     id: String(row.id),
     profileId: String(row.profile_id),
@@ -88,7 +102,7 @@ function mapBooking(row: Record<string, unknown>) {
       | "cancelled_by_master",
     startsAt: String(row.starts_at),
     endsAt: String(row.ends_at),
-    source: "public_page" as const,
+    source,
     clientNote: String(row.client_note ?? ""),
     cancellationToken: String(row.cancellation_token ?? ""),
     cancellationTokenExpiresAt: String(row.cancellation_token_expires_at ?? ""),
@@ -127,6 +141,83 @@ function mapNotificationEvent(row: Record<string, unknown>) {
     target: String(row.target),
     createdAt: String(row.created_at),
   };
+}
+
+function formatNotificationMoment(createdAt: string, timezone: string) {
+  return DateTime.fromISO(createdAt, { zone: "utc" })
+    .setZone(timezone)
+    .setLocale("ru")
+    .toFormat("d LLLL, HH:mm");
+}
+
+function buildAccountNotificationItems(input: {
+  profile: Profile;
+  notificationEvents: Array<ReturnType<typeof mapNotificationEvent>>;
+  monthlyBookingsUsed: number;
+}) {
+  const { profile, notificationEvents, monthlyBookingsUsed } = input;
+  const remainingBookings = Math.max(
+    0,
+    profile.monthlyBookingLimit - monthlyBookingsUsed,
+  );
+  const stableSystemIso =
+    DateTime.now()
+      .setZone(profile.timezone)
+      .startOf("day")
+      .toUTC()
+      .toISO() ?? new Date().toISOString();
+
+  const eventItems: AccountNotificationItem[] = notificationEvents.map((event) => ({
+    id: `event-${event.id}`,
+    title:
+      event.type === "telegram_new_booking"
+        ? "Новая запись"
+        : "Подтверждение отправлено",
+    description:
+      event.type === "telegram_new_booking"
+        ? "Появилась новая запись. Проверь кабинет и при необходимости свяжись с клиентом."
+        : `Подтверждение по записи отправлено на ${event.target}.`,
+    href:
+      event.type === "telegram_new_booking"
+        ? "/dashboard#today-bookings"
+        : "/clients",
+    tone: event.type === "telegram_new_booking" ? "accent" : "neutral",
+    createdAt: event.createdAt,
+    createdAtLabel: formatNotificationMoment(event.createdAt, profile.timezone),
+  }));
+
+  const systemItems: AccountNotificationItem[] = [];
+
+  if (!profile.telegramChatId) {
+    systemItems.push({
+      id: "system-telegram",
+      title: "Подключи Telegram",
+      description:
+        "Так ты быстрее увидишь новые записи и системные подсказки по кабинету.",
+      href: "/settings",
+      tone: "warning",
+      createdAt: stableSystemIso,
+      createdAtLabel: "Сегодня",
+    });
+  }
+
+  if (remainingBookings <= 10) {
+    systemItems.push({
+      id: "system-limit",
+      title:
+        remainingBookings > 0 ? "Лимит скоро закончится" : "Лимит закончился",
+      description:
+        remainingBookings > 0
+          ? `Осталось ${remainingBookings} записей в этом месяце. Можно заранее посмотреть переход на Pro.`
+          : "В этом месяце бесплатный лимит исчерпан. Самое время показать апгрейд без давления.",
+      href: "/pricing",
+      tone: remainingBookings > 0 ? "warning" : "accent",
+      createdAt: stableSystemIso,
+      createdAtLabel: "Сегодня",
+    });
+  }
+
+  return [...systemItems, ...eventItems].slice(0, 8);
 }
 
 export async function getPublicPageData(username: string) {
@@ -245,6 +336,63 @@ export async function getCurrentAuthProfile() {
   return {
     profile: mapProfile(profileRow),
     source: "supabase" as const,
+  };
+}
+
+export async function getAccountNotificationPanelData(input: {
+  profile: Profile;
+  source: "mock" | "supabase";
+}) {
+  if (input.source === "mock") {
+    return {
+      storageKey: `okno.notifications.last-seen.${input.profile.id}`,
+      items: buildAccountNotificationItems({
+        profile: input.profile,
+        notificationEvents,
+        monthlyBookingsUsed: input.profile.monthlyBookingsUsed,
+      }),
+    };
+  }
+
+  const admin = createSupabaseAdminClient();
+  const profileId = input.profile.id;
+  const monthStart = DateTime.now()
+    .setZone(input.profile.timezone)
+    .startOf("month");
+  const monthEnd = monthStart.plus({ months: 1 });
+  const monthStartUtc = monthStart.toUTC().toISO() ?? new Date().toISOString();
+  const monthEndUtc = monthEnd.toUTC().toISO() ?? new Date().toISOString();
+
+  const [notificationResult, monthlyBookingsUsedResult] = await Promise.all([
+    admin
+      .from("notification_events")
+      .select("*")
+      .eq("profile_id", profileId)
+      .order("created_at", { ascending: false })
+      .limit(8),
+    admin
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("profile_id", profileId)
+      .eq("status", "confirmed")
+      .or(
+        `and(starts_at.gte.${monthStartUtc},starts_at.lt.${monthEndUtc}),and(created_at.gte.${monthStartUtc},created_at.lt.${monthEndUtc})`,
+      ),
+  ]);
+
+  if (notificationResult.error || monthlyBookingsUsedResult.error) {
+    throw new Error("Не получилось загрузить уведомления кабинета.");
+  }
+
+  return {
+    storageKey: `okno.notifications.last-seen.${input.profile.id}`,
+    items: buildAccountNotificationItems({
+      profile: input.profile,
+      notificationEvents: (notificationResult.data ?? []).map((row) =>
+        mapNotificationEvent(row),
+      ),
+      monthlyBookingsUsed: monthlyBookingsUsedResult.count ?? 0,
+    }),
   };
 }
 

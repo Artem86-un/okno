@@ -14,12 +14,12 @@ export default async function SettingsPage() {
   const { availabilityRules, profile, services } = data;
 
   return (
-    <SiteShell compact>
+    <SiteShell compact showAccountNotifications>
       <div className="space-y-6 py-4">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="space-y-3">
             <Badge tone="accent">Настройки</Badge>
-            <h1 className="text-4xl font-semibold text-[var(--color-ink)]">Профиль и параметры записи</h1>
+            <h1 className="text-4xl font-semibold text-ink">Профиль и параметры записи</h1>
           </div>
         </div>
 

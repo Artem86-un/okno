@@ -2,12 +2,15 @@ import { redirect } from "next/navigation";
 import { DateTime } from "luxon";
 import {
   CalendarClock,
-  ChartNoAxesColumn,
   Globe,
+  PlusCircle,
   MessageCircle,
+  ReceiptText,
   Settings2,
   Sparkles,
+  Wallet,
 } from "lucide-react";
+import { ManualBookingForm, CancelBookingButton } from "@/components/forms/booking-operations";
 import { SiteShell } from "@/components/layout/site-shell";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
@@ -38,7 +41,7 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const { bookings, clients, notificationEvents, profile, services } = data;
+  const { bookings, clients, profile, services } = data;
   const remainingBookings = Math.max(
     0,
     profile.monthlyBookingLimit - profile.monthlyBookingsUsed,
@@ -63,27 +66,59 @@ export default async function DashboardPage() {
   const todayKey = now.toFormat("yyyy-MM-dd");
   const todayBookings = bookings.filter(
     (booking) =>
+      booking.status === "confirmed" &&
       DateTime.fromISO(booking.startsAt, { zone: "utc" })
         .setZone(profile.timezone)
         .toFormat("yyyy-MM-dd") === todayKey,
   );
   const futureBookings = bookings.filter(
     (booking) =>
+      booking.status === "confirmed" &&
       DateTime.fromISO(booking.startsAt, { zone: "utc" })
         .setZone(profile.timezone)
         .toFormat("yyyy-MM-dd") !== todayKey,
   );
+  const weekStart = now.startOf("week");
+  const weekEnd = weekStart.plus({ days: 7 });
+  const monthStart = now.startOf("month");
+  const monthEnd = monthStart.plus({ months: 1 });
+  const servicesMap = new Map(services.map((service) => [service.id, service]));
+  const weeklyBookings = bookings.filter((booking) => {
+    if (booking.status !== "confirmed") return false;
+    const startsAt = DateTime.fromISO(booking.startsAt, { zone: "utc" }).setZone(
+      profile.timezone,
+    );
+    return startsAt >= weekStart && startsAt < weekEnd;
+  });
+  const monthlyRevenue = bookings.reduce((total, booking) => {
+    if (booking.status !== "confirmed") return total;
+    const startsAt = DateTime.fromISO(booking.startsAt, { zone: "utc" }).setZone(
+      profile.timezone,
+    );
+    if (startsAt < monthStart || startsAt >= monthEnd) {
+      return total;
+    }
+
+    return total + (servicesMap.get(booking.serviceId)?.price ?? 0);
+  }, 0);
+  const manualBookingsThisMonth = bookings.filter((booking) => {
+    if (booking.status !== "confirmed" || booking.source !== "manual") return false;
+    const startsAt = DateTime.fromISO(booking.startsAt, { zone: "utc" }).setZone(
+      profile.timezone,
+    );
+    return startsAt >= monthStart && startsAt < monthEnd;
+  }).length;
 
   return (
-    <SiteShell compact>
+    <SiteShell compact showAccountNotifications>
       <div className="space-y-6 py-4">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div className="space-y-3">
             <Badge tone="accent">Кабинет мастера</Badge>
-            <h1 className="text-4xl font-semibold text-[var(--color-ink)]">
+            <h1 className="text-4xl font-semibold text-ink">
               Добрый день, {profile.fullName}
             </h1>
-            <p className="max-w-2xl text-sm leading-7 text-[var(--color-ink-soft)]">
+            <p className="max-w-2xl text-sm leading-7 text-ink-soft">
               Сегодня у тебя {pluralizeActiveBookings(todayBookings.length)}. Внизу все ближайшие визиты и
               быстрые действия по кабинету.
             </p>
@@ -94,22 +129,22 @@ export default async function DashboardPage() {
           <div className="space-y-6">
             <div className="grid gap-4 md:grid-cols-3">
               <Card className="space-y-2">
-                <CalendarClock className="text-[var(--color-accent-deep)]" size={22} />
-                <p className="text-sm text-[var(--color-muted)]">Записи сегодня</p>
-                <p className="text-3xl font-semibold text-[var(--color-ink)]">{todayBookings.length}</p>
+                <CalendarClock className="text-accent-deep" size={22} />
+                <p className="text-sm text-muted">Записи сегодня</p>
+                <p className="text-3xl font-semibold text-ink">{todayBookings.length}</p>
               </Card>
               <Card className="space-y-2">
-                <ChartNoAxesColumn className="text-[var(--color-warning)]" size={22} />
-                <p className="text-sm text-[var(--color-muted)]">Осталось в тарифе</p>
-                <p className="text-3xl font-semibold text-[var(--color-ink)]">
-                  {remainingBookings}
+                <ReceiptText className="text-warning" size={22} />
+                <p className="text-sm text-muted">Записи на этой неделе</p>
+                <p className="text-3xl font-semibold text-ink">
+                  {weeklyBookings.length}
                 </p>
               </Card>
               <Card className="space-y-2">
-                <MessageCircle className="text-[var(--color-success)]" size={22} />
-                <p className="text-sm text-[var(--color-muted)]">Уведомления</p>
-                <p className="text-3xl font-semibold text-[var(--color-ink)]">
-                  {notificationEvents.length}
+                <Wallet className="text-success" size={22} />
+                <p className="text-sm text-muted">Выручка за месяц</p>
+                <p className="text-3xl font-semibold text-ink">
+                  {new Intl.NumberFormat("ru-RU").format(monthlyRevenue)} ₽
                 </p>
               </Card>
             </div>
@@ -117,8 +152,8 @@ export default async function DashboardPage() {
             <Card className="space-y-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-2xl font-semibold text-[var(--color-ink)]">Ближайшие записи</h2>
-                  <p className="text-sm text-[var(--color-muted)]">
+                  <h2 className="text-2xl font-semibold text-ink">Ближайшие записи</h2>
+                  <p className="text-sm text-muted">
                     Сначала показываем визиты на сегодня, потом все остальные по датам.
                   </p>
                 </div>
@@ -127,10 +162,10 @@ export default async function DashboardPage() {
                 </ButtonLink>
               </div>
               <div className="space-y-6">
-                <div className="space-y-3">
+                <div id="today-bookings" className="scroll-mt-28 space-y-3">
                   <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-lg font-semibold text-[var(--color-ink)]">Сегодня</h3>
-                    <span className="text-sm text-[var(--color-muted)]">
+                    <h3 className="text-lg font-semibold text-ink">Сегодня</h3>
+                    <span className="text-sm text-muted">
                       {now.setLocale("ru").toFormat("d LLLL")}
                     </span>
                   </div>
@@ -148,14 +183,14 @@ export default async function DashboardPage() {
                       ))}
                     </div>
                   ) : (
-                    <div className="rounded-[24px] border border-dashed border-[var(--color-line)] p-5 text-sm text-[var(--color-muted)]">
+                    <div className="rounded-[24px] border border-dashed border-line p-5 text-sm text-muted">
                       На сегодня записей пока нет.
                     </div>
                   )}
                 </div>
 
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold text-[var(--color-ink)]">Другие дни</h3>
+                <div id="future-bookings" className="scroll-mt-28 space-y-3">
+                  <h3 className="text-lg font-semibold text-ink">Другие дни</h3>
                   {futureBookings.length > 0 ? (
                     <div className="space-y-3">
                       {futureBookings.map((booking) => (
@@ -170,7 +205,7 @@ export default async function DashboardPage() {
                       ))}
                     </div>
                   ) : (
-                    <div className="rounded-[24px] border border-dashed border-[var(--color-line)] p-5 text-sm text-[var(--color-muted)]">
+                    <div className="rounded-[24px] border border-dashed border-line p-5 text-sm text-muted">
                       Записей на другие дни пока нет.
                     </div>
                   )}
@@ -223,17 +258,40 @@ export default async function DashboardPage() {
             </Card>
 
             <Card className="space-y-4">
+              <div className="flex items-center gap-3">
+                <PlusCircle size={18} className="text-accent-deep" />
+                <div>
+                  <h2 className="text-2xl font-semibold text-ink">
+                    Ручная запись
+                  </h2>
+                  <p className="text-sm text-muted">
+                    Для клиентов из звонков, WhatsApp или личных сообщений.
+                  </p>
+                </div>
+              </div>
+              <div className="rounded-[20px] bg-panel px-4 py-3 text-sm text-ink-soft">
+                В этом месяце вручную добавлено {manualBookingsThisMonth}{" "}
+                {manualBookingsThisMonth === 1 ? "запись" : manualBookingsThisMonth >= 2 && manualBookingsThisMonth <= 4 ? "записи" : "записей"}.
+              </div>
+              <ManualBookingForm
+                services={services}
+                profile={profile}
+                defaultDate={now.toISODate() ?? ""}
+              />
+            </Card>
+
+            <Card className="space-y-4">
               <div className="space-y-1">
-                <h2 className="text-2xl font-semibold text-[var(--color-ink)]">
+                <h2 className="text-2xl font-semibold text-ink">
                   Быстрые действия
                 </h2>
-                <p className="text-sm text-[var(--color-muted)]">
+                <p className="text-sm text-muted">
                   Полезные шаги, которые можно сделать прямо сейчас.
                 </p>
               </div>
               <div className="space-y-3">
                 <QuickAction
-                  icon={<Settings2 size={18} className="text-[var(--color-accent-deep)]" />}
+                  icon={<Settings2 size={18} className="text-accent-deep" />}
                   title="Проверить параметры записи"
                   description="Окно записи, шаг времени и буфер между клиентами."
                   href="/settings"
@@ -242,7 +300,7 @@ export default async function DashboardPage() {
                   statusTone="accent"
                 />
                 <QuickAction
-                  icon={<MessageCircle size={18} className="text-[var(--color-success)]" />}
+                  icon={<MessageCircle size={18} className="text-success" />}
                   title="Подключить Telegram"
                   description={
                     profile.telegramChatId
@@ -255,7 +313,7 @@ export default async function DashboardPage() {
                   statusTone={profile.telegramChatId ? "success" : "warning"}
                 />
                 <QuickAction
-                  icon={<Globe size={18} className="text-[var(--color-warning)]" />}
+                  icon={<Globe size={18} className="text-warning" />}
                   title="Открыть публичную страницу"
                   description="Посмотри, как запись выглядит для клиента с телефона."
                   href={`/${profile.username}`}
@@ -290,14 +348,14 @@ function QuickAction({
   statusTone: "neutral" | "success" | "accent" | "warning";
 }) {
   return (
-    <div className="rounded-[22px] border border-[var(--color-line)] bg-[var(--color-panel)] p-4">
+    <div className="rounded-[22px] border border-line bg-panel p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex items-center gap-3">
             {icon}
-            <p className="font-medium text-[var(--color-ink)]">{title}</p>
+            <p className="font-medium text-ink">{title}</p>
           </div>
-          <p className="text-sm leading-6 text-[var(--color-ink-soft)]">
+          <p className="text-sm leading-6 text-ink-soft">
             {description}
           </p>
         </div>
@@ -332,21 +390,21 @@ function BookingCard({
   );
 
   return (
-    <div className="w-full max-w-full overflow-hidden rounded-[24px] border border-[var(--color-line)] p-4">
-      <div className="flex w-full max-w-full flex-wrap items-start justify-between gap-4 overflow-hidden">
-        <div className="min-w-0 flex-1 basis-full space-y-1 sm:basis-0">
-          <p className="font-medium text-[var(--color-ink)]">{client?.name}</p>
-          <p className="text-sm text-[var(--color-ink-soft)]">
+    <div className="w-full max-w-full rounded-[24px] border border-line p-4">
+      <div className="grid w-full max-w-full gap-4 sm:grid-cols-[minmax(0,1fr)_15rem] sm:items-start">
+        <div className="min-w-0 space-y-1">
+          <p className="font-medium text-ink">{client?.name}</p>
+          <p className="text-sm text-ink-soft">
             {service?.title} • {startsAt.toFormat("HH:mm")}
           </p>
           {showDate ? (
-            <p className="text-sm text-[var(--color-muted)]">
+            <p className="text-sm text-muted">
               Дата визита: {startsAt.setLocale("ru").toFormat("d LLLL")}
             </p>
           ) : null}
           {booking.clientNote ? (
             <p
-              className="max-w-full overflow-hidden whitespace-pre-wrap text-sm leading-6 text-[var(--color-muted)]"
+              className="max-w-full overflow-hidden whitespace-pre-wrap text-sm leading-6 text-muted"
               style={{
                 overflowWrap: "anywhere",
                 wordBreak: "break-word",
@@ -356,8 +414,11 @@ function BookingCard({
             </p>
           ) : null}
         </div>
-        <div className="shrink-0">
+        <div className="flex w-full flex-col items-start gap-3 sm:items-end">
           <Badge tone="success">Подтверждено</Badge>
+          <div className="w-full sm:w-[15rem]">
+            <CancelBookingButton bookingId={booking.id} />
+          </div>
         </div>
       </div>
     </div>

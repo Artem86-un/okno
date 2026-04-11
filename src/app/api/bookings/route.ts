@@ -4,6 +4,7 @@ import { isSupabaseConfigured } from "@/lib/env";
 import {
   decryptPhone,
   encryptPhone,
+  getCancellationDeadlineIso,
   hashPhone,
   humanizeBookingDate,
   phoneLast4,
@@ -234,7 +235,11 @@ export async function POST(request: Request) {
       ends_at: endsAt.toISOString(),
       source: "public_page",
       client_note: parsed.data.note,
-      cancellation_token_expires_at: startsAt.toISOString(),
+      cancellation_token_expires_at:
+        getCancellationDeadlineIso({
+          startsAtIso: startsAt.toISOString(),
+          cancellationNoticeHours: Number(profileRow.cancellation_notice_hours ?? 0),
+        }) ?? startsAt.toISOString(),
     })
     .select("*")
     .single();

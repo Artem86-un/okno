@@ -177,8 +177,8 @@ export function AvailabilitySettingsForm({
               key={day.value}
               className={`rounded-[18px] border p-4 transition ${
                 enabled
-                  ? "border-[var(--color-ink)] bg-[var(--color-panel)]"
-                  : "border-[var(--color-line)] bg-white"
+                  ? "border-ink bg-panel"
+                  : "border-line bg-white"
               }`}
             >
               <input
@@ -204,8 +204,8 @@ export function AvailabilitySettingsForm({
                   }
                   className={`relative h-6 w-11 rounded-full border transition ${
                     enabled
-                      ? "border-[var(--color-ink)] bg-[var(--color-ink)]"
-                      : "border-[var(--color-line)] bg-[var(--color-panel)]"
+                      ? "border-ink bg-ink"
+                      : "border-line bg-panel"
                   }`}
                 >
                   <span
@@ -214,7 +214,7 @@ export function AvailabilitySettingsForm({
                     }`}
                   />
                 </button>
-                <div className="text-sm font-medium text-[var(--color-ink)]">
+                <div className="text-sm font-medium text-ink">
                   {day.label}
                 </div>
                 <div className="flex items-center gap-2">
@@ -222,14 +222,14 @@ export function AvailabilitySettingsForm({
                     name={`start_${day.value}`}
                     type="time"
                     defaultValue={rule?.startTime ?? "09:00"}
-                    className="min-h-10 rounded-xl border border-[var(--color-line)] bg-white px-3 text-sm text-[var(--color-ink)] outline-none"
+                    className="min-h-10 rounded-xl border border-line bg-white px-3 text-sm text-ink outline-none"
                   />
-                  <span className="text-xs text-[var(--color-muted)]">—</span>
+                  <span className="text-xs text-muted">—</span>
                   <input
                     name={`end_${day.value}`}
                     type="time"
                     defaultValue={rule?.endTime ?? "18:00"}
-                    className="min-h-10 rounded-xl border border-[var(--color-line)] bg-white px-3 text-sm text-[var(--color-ink)] outline-none"
+                    className="min-h-10 rounded-xl border border-line bg-white px-3 text-sm text-ink outline-none"
                   />
                 </div>
               </div>
@@ -254,8 +254,8 @@ export function ServicesSettingsForm({ services }: { services: Service[] }) {
         ))}
       </div>
 
-      <form action={createAction} className="space-y-4 rounded-[20px] border border-dashed border-[var(--color-line)] p-4">
-        <h3 className="text-lg font-semibold text-[var(--color-ink)]">Новая услуга</h3>
+      <form action={createAction} className="space-y-4 rounded-[20px] border border-dashed border-line p-4">
+        <h3 className="text-lg font-semibold text-ink">Новая услуга</h3>
         <Input label="Название" name="title" placeholder="Маникюр без покрытия" required />
         <Textarea
           label="Описание"
@@ -279,13 +279,13 @@ function ServiceEditor({ service }: { service: Service }) {
   const [state, action] = useActionState(updateServiceAction, initialState);
 
   return (
-    <form action={action} className="space-y-4 rounded-[18px] border border-[var(--color-line)] bg-white p-4">
+    <form action={action} className="space-y-4 rounded-[18px] border border-line bg-white p-4">
       <input type="hidden" name="serviceId" value={service.id} />
       <input type="hidden" name="sortOrder" value={String(service.sortOrder || 1)} />
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h3 className="text-sm font-semibold text-[var(--color-ink)]">{service.title}</h3>
-          <div className="mt-2 flex gap-4 text-sm text-[var(--color-ink-soft)]">
+          <h3 className="text-sm font-semibold text-ink">{service.title}</h3>
+          <div className="mt-2 flex gap-4 text-sm text-ink-soft">
             <span>{service.durationMinutes} мин</span>
             <span>{service.price} ₽</span>
           </div>
@@ -293,8 +293,8 @@ function ServiceEditor({ service }: { service: Service }) {
         <span
           className={`rounded-full px-3 py-1 text-xs ${
             service.isActive
-              ? "bg-[var(--color-success-soft)] text-[var(--color-success)]"
-              : "bg-[var(--color-panel)] text-[var(--color-muted)]"
+              ? "bg-success-soft text-success"
+              : "bg-panel text-muted"
           }`}
         >
           {service.isActive ? "Активна" : "Скрыта"}
@@ -305,7 +305,7 @@ function ServiceEditor({ service }: { service: Service }) {
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--color-line)] px-4 py-3 text-sm font-medium text-[var(--color-ink)] transition hover:bg-[var(--color-panel)]"
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-line px-4 py-3 text-sm font-medium text-ink transition hover:bg-panel"
         >
           <Pencil size={14} />
           {open ? "Свернуть" : "Редактировать"}
@@ -314,7 +314,7 @@ function ServiceEditor({ service }: { service: Service }) {
           type="submit"
           name="visibilityAction"
           value={service.isActive ? "hide" : "show"}
-          className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--color-line)] px-4 py-3 text-sm font-medium text-[var(--color-ink)] transition hover:bg-[var(--color-panel)]"
+          className="inline-flex items-center justify-center gap-2 rounded-xl border border-line px-4 py-3 text-sm font-medium text-ink transition hover:bg-panel"
         >
           <EyeOff size={14} />
           {service.isActive ? "Скрыть" : "Показать"}
@@ -365,18 +365,18 @@ function UnitInput({
 }) {
   return (
     <label className="flex flex-col gap-2 text-sm">
-      <span className="font-medium text-[var(--color-ink)]">{label}</span>
-      <div className="flex min-h-12 items-center rounded-2xl border border-[var(--color-line)] bg-white px-4">
+      <span className="font-medium text-ink">{label}</span>
+      <div className="flex min-h-12 items-center rounded-2xl border border-line bg-white px-4">
         <input
           name={name}
           type="number"
           defaultValue={defaultValue}
           placeholder={placeholder}
           inputMode="numeric"
-          className="w-full bg-transparent text-[15px] text-[var(--color-ink)] outline-none"
+          className="w-full bg-transparent text-[15px] text-ink outline-none"
           required
         />
-        <span className="ml-3 text-xs text-[var(--color-muted)]">{unit}</span>
+        <span className="ml-3 text-xs text-muted">{unit}</span>
       </div>
     </label>
   );
@@ -398,9 +398,9 @@ function ParameterField({
   example: string;
 }) {
   return (
-    <div className="rounded-[18px] bg-[var(--color-panel)] p-4">
-      <p className="text-sm font-medium text-[var(--color-ink)]">{label}</p>
-      <p className="mt-1 text-xs leading-5 text-[var(--color-ink-soft)]">
+    <div className="rounded-[18px] bg-panel p-4">
+      <p className="text-sm font-medium text-ink">{label}</p>
+      <p className="mt-1 text-xs leading-5 text-ink-soft">
         {description}
       </p>
       <input
@@ -408,11 +408,11 @@ function ParameterField({
         type="number"
         inputMode="numeric"
         defaultValue={defaultValue}
-        className="mt-2 min-h-10 w-full rounded-xl border border-[var(--color-line)] bg-white px-3 text-sm font-medium text-[var(--color-ink)] outline-none"
+        className="mt-2 min-h-10 w-full rounded-xl border border-line bg-white px-3 text-sm font-medium text-ink outline-none"
         required
       />
-      <p className="mt-2 text-xs text-[var(--color-muted)]">{unit}</p>
-      <p className="mt-1 text-xs leading-5 text-[var(--color-muted)]">
+      <p className="mt-2 text-xs text-muted">{unit}</p>
+      <p className="mt-1 text-xs leading-5 text-muted">
         {example}
       </p>
     </div>

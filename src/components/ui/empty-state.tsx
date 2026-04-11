@@ -14,11 +14,11 @@ export function EmptyState({
   ctaHref: string;
 }) {
   return (
-    <Card className="bg-[var(--color-panel)]">
+    <Card className="bg-panel">
       <div className="flex flex-col gap-4">
         <div className="space-y-2">
-          <h3 className="text-xl font-semibold text-[var(--color-ink)]">{title}</h3>
-          <p className="max-w-xl text-sm leading-6 text-[var(--color-muted)]">
+          <h3 className="text-xl font-semibold text-ink">{title}</h3>
+          <p className="max-w-xl text-sm leading-6 text-muted">
             {description}
           </p>
         </div>

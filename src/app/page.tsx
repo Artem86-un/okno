@@ -47,10 +47,10 @@ export default function HomePage() {
           <div className="space-y-8">
             <Badge tone="accent">Для мастеров маникюра и бровей</Badge>
             <div className="space-y-5">
-              <h1 className="max-w-3xl text-5xl font-semibold tracking-tight text-[var(--color-ink)] sm:text-6xl">
+              <h1 className="max-w-3xl text-5xl font-semibold tracking-tight text-ink sm:text-6xl">
                 Онлайн-запись, которая выглядит спокойно, красиво и по-человечески.
               </h1>
-              <p className="max-w-2xl text-lg leading-8 text-[var(--color-ink-soft)]">
+              <p className="max-w-2xl text-lg leading-8 text-ink-soft">
                 `okno` помогает маленьким мастерам перестать записывать вручную, не
                 проваливаясь в тяжелые CRM. Мастер получает порядок. Клиент получает
                 приятный путь к записи.
@@ -68,34 +68,34 @@ export default function HomePage() {
             <div className="grid gap-3 sm:grid-cols-3">
               {valueProps.map((item) => (
                 <Card key={item} className="rounded-[24px] p-4">
-                  <p className="text-sm leading-6 text-[var(--color-ink-soft)]">{item}</p>
+                  <p className="text-sm leading-6 text-ink-soft">{item}</p>
                 </Card>
               ))}
             </div>
           </div>
 
           <Card className="overflow-hidden p-0">
-            <div className="m-4 rounded-[24px] border border-[var(--color-line)] bg-[var(--color-panel)] p-5">
-              <p className="text-sm text-[var(--color-muted)]">Превью публичной страницы</p>
-              <h2 className="mt-2 text-2xl font-semibold text-[var(--color-ink)]">
+            <div className="m-4 rounded-[24px] border border-line bg-panel p-5">
+              <p className="text-sm text-muted">Превью публичной страницы</p>
+              <h2 className="mt-2 text-2xl font-semibold text-ink">
                 {profile.fullName}
               </h2>
-              <p className="mt-1 text-sm text-[var(--color-ink-soft)]">{profile.bio}</p>
+              <p className="mt-1 text-sm text-ink-soft">{profile.bio}</p>
             </div>
             <div className="space-y-4 px-4 pb-4">
               {services.map((service) => (
                 <div
                   key={service.id}
-                  className="rounded-[24px] border border-[var(--color-line)] p-4"
+                  className="rounded-[24px] border border-line p-4"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="space-y-1">
-                      <p className="font-medium text-[var(--color-ink)]">{service.title}</p>
-                      <p className="text-sm leading-6 text-[var(--color-muted)]">
+                      <p className="font-medium text-ink">{service.title}</p>
+                      <p className="text-sm leading-6 text-muted">
                         {service.description}
                       </p>
                     </div>
-                    <div className="text-right text-sm text-[var(--color-ink-soft)]">
+                    <div className="text-right text-sm text-ink-soft">
                       <p>{service.durationMinutes} мин</p>
                       <p>{service.price} ₽</p>
                     </div>
@@ -118,7 +118,7 @@ export default function HomePage() {
           <div className="grid gap-6 lg:grid-cols-2">
             {comparisons.map((comparison) => (
               <Card key={comparison.title}>
-                <h3 className="text-xl font-semibold text-[var(--color-ink)]">
+                <h3 className="text-xl font-semibold text-ink">
                   {comparison.title}
                 </h3>
                 <div className="mt-5 space-y-3">
@@ -126,9 +126,9 @@ export default function HomePage() {
                     <div key={point} className="flex gap-3">
                       <CheckCircle2
                         size={18}
-                        className="mt-1 shrink-0 text-[var(--color-accent-deep)]"
+                        className="mt-1 shrink-0 text-accent-deep"
                       />
-                      <p className="text-sm leading-6 text-[var(--color-ink-soft)]">{point}</p>
+                      <p className="text-sm leading-6 text-ink-soft">{point}</p>
                     </div>
                   ))}
                 </div>
@@ -162,11 +162,11 @@ export default function HomePage() {
               },
             ].map((item) => (
               <Card key={item.title}>
-                <item.icon size={28} className="text-[var(--color-accent-deep)]" />
-                <h3 className="mt-6 text-xl font-semibold text-[var(--color-ink)]">
+                <item.icon size={28} className="text-accent-deep" />
+                <h3 className="mt-6 text-xl font-semibold text-ink">
                   {item.title}
                 </h3>
-                <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
+                <p className="mt-3 text-sm leading-6 text-ink-soft">
                   {item.text}
                 </p>
               </Card>
@@ -177,19 +177,19 @@ export default function HomePage() {
         <section className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
           <Card className="space-y-4">
             <div className="flex items-center gap-3">
-              <LockKeyhole size={20} className="text-[var(--color-accent-deep)]" />
-              <h3 className="text-xl font-semibold text-[var(--color-ink)]">
+              <LockKeyhole size={20} className="text-accent-deep" />
+              <h3 className="text-xl font-semibold text-ink">
                 Про доверие и приватность
               </h3>
             </div>
-            <p className="text-sm leading-7 text-[var(--color-ink-soft)]">
+            <p className="text-sm leading-7 text-ink-soft">
               `okno` не строится на сборе номеров “на будущее”. Телефон клиента
               используется только для подтверждения записи и связи по визиту. Никаких
               холодных рассылок, сложных капч и агрессивных тарифов.
             </p>
             <Link
               href="/settings"
-              className="inline-flex text-sm font-medium text-[var(--color-ink)] underline underline-offset-4"
+              className="inline-flex text-sm font-medium text-ink underline underline-offset-4"
             >
               Посмотреть, как это объясняется внутри продукта
             </Link>
@@ -210,7 +210,7 @@ export default function HomePage() {
                 на Pro не был неожиданным и навязчивым.
               </p>
             </div>
-            <ButtonLink href="/pricing" variant="secondary" className="w-fit bg-white text-[var(--color-ink)]">
+            <ButtonLink href="/pricing" variant="secondary" className="w-fit bg-white text-ink">
               Посмотреть тарифы
             </ButtonLink>
           </Card>
@@ -226,22 +226,22 @@ export default function HomePage() {
             {pricingPlans.map((plan) => (
               <Card
                 key={plan.title}
-                className={plan.title === "okno Pro" ? "bg-[var(--color-panel)]" : ""}
+                className={plan.title === "okno Pro" ? "bg-panel" : ""}
               >
-                <p className="text-sm uppercase tracking-[0.24em] text-[var(--color-ink-soft)]">
+                <p className="text-sm uppercase tracking-[0.24em] text-ink-soft">
                   {plan.title}
                 </p>
-                <h3 className="mt-3 text-4xl font-semibold text-[var(--color-ink)]">
+                <h3 className="mt-3 text-4xl font-semibold text-ink">
                   {plan.price}
                 </h3>
-                <p className="mt-3 text-base leading-7 text-[var(--color-ink-soft)]">
+                <p className="mt-3 text-base leading-7 text-ink-soft">
                   {plan.description}
                 </p>
                 <div className="mt-6 space-y-3">
                   {plan.features.map((feature) => (
                     <div key={feature} className="flex gap-3">
-                      <CheckCircle2 size={18} className="mt-1 shrink-0 text-[var(--color-accent-deep)]" />
-                      <p className="text-base leading-7 text-[var(--color-ink-soft)]">{feature}</p>
+                      <CheckCircle2 size={18} className="mt-1 shrink-0 text-accent-deep" />
+                      <p className="text-base leading-7 text-ink-soft">{feature}</p>
                     </div>
                   ))}
                 </div>

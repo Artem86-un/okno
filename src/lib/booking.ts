@@ -83,6 +83,15 @@ export function toUtcIsoFromLocalSlot(input: {
   }).toUTC().toISO();
 }
 
+export function getCancellationDeadlineIso(input: {
+  startsAtIso: string;
+  cancellationNoticeHours: number;
+}) {
+  return DateTime.fromISO(input.startsAtIso, { zone: "utc" })
+    .minus({ hours: Math.max(0, input.cancellationNoticeHours) })
+    .toISO();
+}
+
 export function humanizeBookingDate(input: {
   startsAtIso: string;
   timezone: string;

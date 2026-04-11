@@ -20,10 +20,10 @@ export function RegisterForm() {
     <form action={formAction} className="space-y-6">
       <Card className="space-y-5">
         <div>
-          <p className="text-sm uppercase tracking-[0.24em] text-[var(--color-muted)]">
+          <p className="text-sm uppercase tracking-[0.24em] text-muted">
             Шаг 1
           </p>
-          <h2 className="mt-2 text-2xl font-semibold text-[var(--color-ink)]">
+          <h2 className="mt-2 text-2xl font-semibold text-ink">
             Личные данные и вход
           </h2>
         </div>
@@ -44,10 +44,10 @@ export function RegisterForm() {
 
       <Card className="space-y-5">
         <div>
-          <p className="text-sm uppercase tracking-[0.24em] text-[var(--color-muted)]">
+          <p className="text-sm uppercase tracking-[0.24em] text-muted">
             Шаг 2
           </p>
-          <h2 className="mt-2 text-2xl font-semibold text-[var(--color-ink)]">
+          <h2 className="mt-2 text-2xl font-semibold text-ink">
             Первая услуга
           </h2>
         </div>

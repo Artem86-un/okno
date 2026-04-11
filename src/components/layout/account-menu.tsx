@@ -44,8 +44,8 @@ export function AccountMenu({ username, authenticated }: AccountMenuProps) {
         aria-label={open ? "Закрыть меню" : "Открыть меню"}
         onClick={() => setOpen((value) => !value)}
         className={cn(
-          "inline-flex h-11 w-11 items-center justify-center rounded-full border border-[var(--color-line)] bg-white text-[var(--color-ink)] transition duration-300 hover:-translate-y-0.5 hover:bg-[var(--color-panel)] active:scale-95",
-          open && "border-[var(--color-ink-soft)] bg-white text-[var(--color-ink)]",
+          "inline-flex h-11 w-11 items-center justify-center rounded-full border border-line bg-white text-ink transition duration-300 hover:-translate-y-0.5 hover:bg-panel active:scale-95",
+          open && "border-ink-soft bg-white text-ink",
         )}
       >
         <span className="relative flex h-5 w-5 items-center justify-center">
@@ -75,11 +75,11 @@ export function AccountMenu({ username, authenticated }: AccountMenuProps) {
             onClick={() => setOpen(false)}
           />
 
-          <div className="fixed right-4 top-20 z-50 w-[min(92vw,360px)] rounded-[28px] border border-[var(--color-line)] bg-white p-4 shadow-[0_30px_80px_rgba(35,36,31,0.16)] transition duration-300">
+          <div className="fixed right-4 top-20 z-50 w-[min(92vw,360px)] rounded-[28px] border border-line bg-white p-4 shadow-[0_30px_80px_rgba(35,36,31,0.16)] transition duration-300">
         {authenticated ? (
           <div className="space-y-2">
-            <div className="rounded-[22px] bg-[var(--color-panel)] p-4">
-              <p className="text-xs uppercase tracking-[0.24em] text-[var(--color-muted)]">
+            <div className="rounded-[22px] bg-panel p-4">
+              <p className="text-xs uppercase tracking-[0.24em] text-muted">
                 Навигация
               </p>
               <div className="mt-3 space-y-2">
@@ -88,7 +88,7 @@ export function AccountMenu({ username, authenticated }: AccountMenuProps) {
                     key={item.href}
                     href={item.href}
                     onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 rounded-[18px] px-3 py-3 text-sm font-medium text-[var(--color-ink)] transition hover:bg-white"
+                    className="flex items-center gap-3 rounded-[18px] px-3 py-3 text-sm font-medium text-ink transition hover:bg-white"
                   >
                     <item.icon size={16} />
                     {item.label}
@@ -98,7 +98,7 @@ export function AccountMenu({ username, authenticated }: AccountMenuProps) {
                   <Link
                     href={`/${username}`}
                     onClick={() => setOpen(false)}
-                    className="flex items-center gap-3 rounded-[18px] px-3 py-3 text-sm font-medium text-[var(--color-ink)] transition hover:bg-white"
+                    className="flex items-center gap-3 rounded-[18px] px-3 py-3 text-sm font-medium text-ink transition hover:bg-white"
                   >
                     <Globe size={16} />
                     Публичная страница
@@ -110,7 +110,7 @@ export function AccountMenu({ username, authenticated }: AccountMenuProps) {
             <form action={signOutAction}>
               <button
                 type="submit"
-                className="flex w-full items-center justify-between rounded-[22px] border border-[var(--color-line)] bg-white px-4 py-3 text-sm font-medium text-[var(--color-ink)] transition duration-300 hover:-translate-y-0.5 hover:bg-[var(--color-panel)] active:scale-[0.99]"
+                className="flex w-full items-center justify-between rounded-[22px] border border-line bg-white px-4 py-3 text-sm font-medium text-ink transition duration-300 hover:-translate-y-0.5 hover:bg-panel active:scale-[0.99]"
               >
                 <span>Выйти из аккаунта</span>
                 <LogOut size={16} />
@@ -124,7 +124,7 @@ export function AccountMenu({ username, authenticated }: AccountMenuProps) {
                 key={item.href}
                 href={item.href}
                 onClick={() => setOpen(false)}
-                className="block rounded-[20px] px-4 py-3 text-sm font-medium text-[var(--color-ink)] transition hover:bg-[var(--color-panel)]"
+                className="block rounded-[20px] px-4 py-3 text-sm font-medium text-ink transition hover:bg-panel"
               >
                 {item.label}
               </Link>
