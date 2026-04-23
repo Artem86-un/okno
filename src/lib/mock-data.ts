@@ -1,3 +1,10 @@
+import type { PortfolioWork } from "@/lib/profile-media";
+import {
+  defaultBookingThemePresetId,
+  type BookingThemePresetId,
+} from "@/lib/booking-theme-presets";
+import type { AccountRole, AccountStatus, WorkspaceKind } from "@/lib/workspace";
+
 export type SubscriptionTier = "free" | "pro";
 
 export type Profile = {
@@ -12,6 +19,9 @@ export type Profile = {
   timezone: string;
   telegramChatId: string | null;
   avatarUrl: string;
+  avatarPath: string | null;
+  portfolioWorks: PortfolioWork[];
+  bookingThemePresetId: BookingThemePresetId;
   subscriptionTier: SubscriptionTier;
   monthlyBookingLimit: number;
   monthlyBookingsUsed: number;
@@ -19,7 +29,15 @@ export type Profile = {
   slotIntervalMinutes: number;
   bufferMinutes: number;
   cancellationNoticeHours: number;
+  clientReminderHours: number;
+  masterReminderHours: number;
   joinedAt: string;
+  workspaceId: string;
+  workspaceName: string;
+  workspaceKind: WorkspaceKind;
+  accountRole: AccountRole;
+  accountStatus: AccountStatus;
+  createdByProfileId: string | null;
 };
 
 export type Service = {
@@ -84,8 +102,12 @@ export type BlockedSlot = {
 export type NotificationEvent = {
   id: string;
   profileId: string;
-  type: "sms_confirmation" | "telegram_new_booking";
-  status: "sent" | "queued";
+  type:
+    | "sms_confirmation"
+    | "telegram_new_booking"
+    | "sms_reminder_client"
+    | "telegram_reminder_master";
+  status: "sent" | "queued" | "failed" | "processing" | "cancelled";
   target: string;
   createdAt: string;
 };
@@ -107,8 +129,31 @@ export const profile: Profile = {
   locationText: "Симферополь, район центра",
   timezone: "Europe/Simferopol",
   telegramChatId: "@okno_master_bot",
-  avatarUrl:
-    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80",
+  avatarUrl: "/demo/avatar.svg",
+  avatarPath: null,
+  portfolioWorks: [
+    {
+      id: "portfolio-1",
+      imageUrl: "/demo/work-1.svg",
+      path: null,
+    },
+    {
+      id: "portfolio-2",
+      imageUrl: "/demo/work-2.svg",
+      path: null,
+    },
+    {
+      id: "portfolio-3",
+      imageUrl: "/demo/work-3.svg",
+      path: null,
+    },
+    {
+      id: "portfolio-4",
+      imageUrl: "/demo/work-4.svg",
+      path: null,
+    },
+  ],
+  bookingThemePresetId: defaultBookingThemePresetId,
   subscriptionTier: "free",
   monthlyBookingLimit: 50,
   monthlyBookingsUsed: 47,
@@ -116,7 +161,15 @@ export const profile: Profile = {
   slotIntervalMinutes: 30,
   bufferMinutes: 15,
   cancellationNoticeHours: 2,
+  clientReminderHours: 24,
+  masterReminderHours: 2,
   joinedAt: "2026-03-01T10:00:00.000Z",
+  workspaceId: "workspace-1",
+  workspaceName: "Алина Мороз",
+  workspaceKind: "solo",
+  accountRole: "solo",
+  accountStatus: "active",
+  createdByProfileId: null,
 };
 
 export const services: Service[] = [

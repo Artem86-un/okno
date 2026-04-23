@@ -101,3 +101,27 @@ export function humanizeBookingDate(input: {
     .setLocale("ru")
     .toFormat("d LLLL, HH:mm");
 }
+
+export function isCancellationAllowed(input: {
+  startsAtIso: string;
+  cancellationTokenExpiresAt: string | null;
+  timezone: string;
+  status: "confirmed" | "cancelled_by_client" | "cancelled_by_master";
+}) {
+  if (input.status !== "confirmed") {
+    return false;
+  }
+
+  if (!input.cancellationTokenExpiresAt) {
+    return true;
+  }
+
+  const deadline = DateTime.fromISO(input.cancellationTokenExpiresAt, { zone: "utc" });
+  const now = DateTime.now().setZone(input.timezone);
+
+  if (!deadline.isValid) {
+    return false;
+  }
+
+  return now <= deadline.setZone(input.timezone);
+}

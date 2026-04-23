@@ -1,10 +1,12 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import {
   BellRing,
   CalendarRange,
   Globe2,
+  Palette,
   ShieldCheck,
   SlidersHorizontal,
   UserRound,
@@ -20,6 +22,21 @@ import {
   ServicesSettingsForm,
 } from "@/components/forms/settings-forms";
 import { ButtonLink } from "@/components/ui/button";
+
+const BookingThemeSettings = dynamic(
+  () =>
+    import("@/components/settings/booking-theme-settings").then(
+      (mod) => mod.BookingThemeSettings,
+    ),
+  {
+    loading: () => (
+      <div className="grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
+        <div className="h-[34rem] animate-pulse rounded-[24px] border border-line bg-white/80" />
+        <div className="h-[34rem] animate-pulse rounded-[24px] border border-line bg-white/80" />
+      </div>
+    ),
+  },
+);
 
 const tabs = [
   { id: "profile", label: "Профиль" },
@@ -130,6 +147,16 @@ export function SettingsTabs({
 
           <Card className="space-y-4">
             <div className="flex items-center gap-3">
+              <Palette size={18} className="text-accent-deep" />
+              <h2 className="text-xl font-semibold text-ink">
+                Цвет клиентских страниц
+              </h2>
+            </div>
+            <BookingThemeSettings profile={profile} services={services} />
+          </Card>
+
+          <Card className="space-y-4">
+            <div className="flex items-center gap-3">
               <BellRing size={18} className="text-success" />
               <h2 className="text-xl font-semibold text-ink">
                 Telegram-уведомления
@@ -140,8 +167,8 @@ export function SettingsTabs({
                 {profile.telegramChatId ? "Бот подключен" : "Бот не подключен"}
               </p>
               <p className="mt-2 text-sm leading-6 text-ink-soft">
-                Подключи Telegram, чтобы получать уведомления о новых записях и быстрее
-                реагировать на изменения.
+                Подключи Telegram, чтобы получать уведомления о новых записях и будущие
+                напоминания о визитах мастера.
               </p>
             </div>
           </Card>

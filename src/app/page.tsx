@@ -12,7 +12,13 @@ import { SectionTitle } from "@/components/sections/section-title";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { pricingPlans, profile, services } from "@/lib/mock-data";
+import {
+  landingDemoBookHref,
+  landingDemoProfile,
+  landingDemoPublicPageHref,
+  landingDemoServices,
+} from "@/lib/landing-demo";
+import { pricingPlans } from "@/lib/mock-data";
 
 const valueProps = [
   "Мастер запускается за 3 шага и получает ссылку сразу",
@@ -41,7 +47,12 @@ const comparisons = [
 
 export default function HomePage() {
   return (
-    <SiteShell hideGuestMenu>
+    <SiteShell
+      hideGuestMenu
+      resolveAuth={false}
+      publicPageHrefOverride={landingDemoPublicPageHref}
+      publicPageLabelOverride="Демо-страница"
+    >
       <div className="space-y-20 pb-10">
         <section className="grid gap-8 py-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
           <div className="space-y-8">
@@ -61,8 +72,8 @@ export default function HomePage() {
                 Начать бесплатно
                 <ArrowRight size={16} />
               </ButtonLink>
-              <ButtonLink href={`/${profile.username}`} variant="secondary">
-                Посмотреть публичную страницу
+              <ButtonLink href={landingDemoPublicPageHref} variant="secondary">
+                Открыть демо-профиль
               </ButtonLink>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
@@ -76,14 +87,14 @@ export default function HomePage() {
 
           <Card className="overflow-hidden p-0">
             <div className="m-4 rounded-[24px] border border-line bg-panel p-5">
-              <p className="text-sm text-muted">Превью публичной страницы</p>
+              <p className="text-sm text-muted">Независимое demo-превью</p>
               <h2 className="mt-2 text-2xl font-semibold text-ink">
-                {profile.fullName}
+                {landingDemoProfile.fullName}
               </h2>
-              <p className="mt-1 text-sm text-ink-soft">{profile.bio}</p>
+              <p className="mt-1 text-sm text-ink-soft">{landingDemoProfile.bio}</p>
             </div>
             <div className="space-y-4 px-4 pb-4">
-              {services.map((service) => (
+              {landingDemoServices.map((service) => (
                 <div
                   key={service.id}
                   className="rounded-[24px] border border-line p-4"
@@ -102,7 +113,7 @@ export default function HomePage() {
                   </div>
                 </div>
               ))}
-              <ButtonLink href={`/${profile.username}/book`} className="w-full justify-center">
+              <ButtonLink href={landingDemoBookHref} className="w-full justify-center">
                 Записаться онлайн
               </ButtonLink>
             </div>

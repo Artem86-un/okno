@@ -1,4 +1,4 @@
-import { CheckCircle2, Link2 } from "lucide-react";
+import { Building2, CheckCircle2, Link2, Users2 } from "lucide-react";
 import { SiteShell } from "@/components/layout/site-shell";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -6,7 +6,7 @@ import { RegisterForm } from "@/components/forms/register-form";
 
 export default function RegisterPage() {
   return (
-    <SiteShell compact>
+    <SiteShell compact resolveAuth={false}>
       <div className="mx-auto flex max-w-3xl justify-center py-10">
         <div className="w-full space-y-6">
           <Card className="space-y-5">
@@ -14,6 +14,9 @@ export default function RegisterPage() {
               <h1 className="text-center text-4xl font-semibold text-ink">
                 Регистрация
               </h1>
+              <p className="text-center text-sm leading-6 text-ink-soft">
+                Можно стартовать как один мастер или сразу открыть рабочее пространство для команды.
+              </p>
             </div>
             <RegisterForm />
           </Card>
@@ -25,18 +28,18 @@ export default function RegisterPage() {
                 <p className="font-medium text-ink">okno.app/alina-nails</p>
               </div>
               <p className="mt-2 text-sm leading-6 text-muted">
-                После регистрации у мастера сразу появится рабочая ссылка для клиентов.
+                У мастера сразу появится рабочая ссылка для клиентов, а у студии откроется отдельная админка.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               {[
-                "Профиль мастера",
-                "Первая услуга",
-                "Ссылка для записи",
+                { label: "Профиль мастера", icon: CheckCircle2 },
+                { label: "Команда и роли", icon: Users2 },
+                { label: "Студия под контролем", icon: Building2 },
               ].map((item) => (
-                <div key={item} className="flex items-center gap-3 rounded-[18px] bg-white px-4 py-3">
-                  <CheckCircle2 size={18} className="shrink-0 text-success" />
-                  <p className="text-sm text-ink-soft">{item}</p>
+                <div key={item.label} className="flex items-center gap-3 rounded-[18px] bg-white px-4 py-3">
+                  <item.icon size={18} className="shrink-0 text-success" />
+                  <p className="text-sm text-ink-soft">{item.label}</p>
                 </div>
               ))}
             </div>

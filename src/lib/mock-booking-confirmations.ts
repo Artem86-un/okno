@@ -6,6 +6,7 @@ type MockBookingConfirmation = {
   clientName: string;
   serviceTitle: string;
   startsAtIso: string;
+  cancellationToken: string;
 };
 
 type GlobalWithMockBookingStore = typeof globalThis & {

@@ -1,4 +1,5 @@
-import { NextResponse } from "next/server";
+import { randomUUID } from "node:crypto";
+import { after, NextResponse } from "next/server";
 import { z } from "zod";
 import { isSupabaseConfigured } from "@/lib/env";
 import {
@@ -11,7 +12,20 @@ import {
   toUtcIsoFromLocalSlot,
 } from "@/lib/booking";
 import { saveMockBookingConfirmation } from "@/lib/mock-booking-confirmations";
-import { sendBookingConfirmationSms, sendMasterTelegramNotification } from "@/lib/notifications";
+import { checkBookingConflict } from "@/lib/booking-conflicts";
+import {
+  buildReminderNotificationEvents,
+  processNotificationQueue,
+} from "@/lib/notification-queue";
+import {
+  acquireBookingIdempotency,
+  assertPublicBookingRateLimit,
+  buildBookingRequestHash,
+  buildIdempotencyKey,
+  completeBookingIdempotency,
+  failBookingIdempotency,
+} from "@/lib/public-booking-guards";
+import { isSupabaseMissingColumnError } from "@/lib/supabase/auth-errors";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { profile as mockProfile, services as mockServices } from "@/lib/mock-data";
 
@@ -44,18 +58,28 @@ export async function POST(request: Request) {
       clientName: parsed.data.name,
       serviceTitle: mockService?.title ?? "Запись",
       startsAtIso: startsAtIso ?? new Date().toISOString(),
+      cancellationToken: `mock-cancel-${randomUUID().replace(/-/g, "")}`,
     });
 
     return NextResponse.json({
       ok: true,
       bookingId: confirmation.id,
-      redirectUrl: `/${parsed.data.username}/confirm?bookingId=${confirmation.id}`,
+      redirectUrl: `/${parsed.data.username}/confirm?bookingId=${confirmation.id}&cancelToken=${confirmation.cancellationToken}`,
     });
   }
 
   const admin = createSupabaseAdminClient();
   const normalizedPhone = parsed.data.phone.replace(/\D/g, "");
   const storedPhone = normalizedPhone || parsed.data.phone;
+  const requestHash = buildBookingRequestHash({
+    username: parsed.data.username,
+    serviceId: parsed.data.serviceId,
+    date: parsed.data.date,
+    time: parsed.data.time,
+    name: parsed.data.name,
+    phone: storedPhone,
+    note: parsed.data.note ?? "",
+  });
   const { data: profileRow, error: profileError } = await admin
     .from("profiles")
     .select("*")
@@ -73,6 +97,98 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Мастер не найден." }, { status: 404 });
   }
 
+  if (String(profileRow.account_status ?? "active") === "disabled") {
+    return NextResponse.json(
+      { error: "Мастер сейчас не принимает записи через эту страницу." },
+      { status: 404 },
+    );
+  }
+
+  try {
+    const rateLimitResult = await assertPublicBookingRateLimit({
+      admin,
+      profileId: String(profileRow.id),
+      username: parsed.data.username,
+      request,
+    });
+
+    if (!rateLimitResult.ok) {
+      return NextResponse.json({ error: rateLimitResult.message }, { status: 429 });
+    }
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Не получилось проверить лимит попыток записи.",
+      },
+      { status: 500 },
+    );
+  }
+
+  const idempotencyKey = buildIdempotencyKey({
+    request,
+    requestHash,
+  });
+  let idempotencyRowId: string | null = null;
+
+  try {
+    const idempotencyState = await acquireBookingIdempotency({
+      admin,
+      profileId: String(profileRow.id),
+      idempotencyKey,
+      requestHash,
+    });
+
+    if (idempotencyState.kind === "mismatch") {
+      return NextResponse.json(
+        { error: "Эта форма уже была отправлена с другими данными. Обнови страницу и попробуй снова." },
+        { status: 409 },
+      );
+    }
+
+    if (idempotencyState.kind === "processing") {
+      return NextResponse.json(
+        { error: "Эта запись уже обрабатывается. Подожди пару секунд." },
+        { status: 409 },
+      );
+    }
+
+    if (idempotencyState.kind === "replay") {
+      return NextResponse.json(idempotencyState.payload, {
+        status: 200,
+        headers: {
+          "X-Idempotent-Replay": "true",
+        },
+      });
+    }
+
+    idempotencyRowId = idempotencyState.rowId;
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Не получилось зафиксировать запрос записи.",
+      },
+      { status: 500 },
+    );
+  }
+
+  const respondWithError = async (status: number, message: string) => {
+    if (idempotencyRowId) {
+      await failBookingIdempotency({
+        admin,
+        rowId: idempotencyRowId,
+        payload: { ok: false, error: message },
+      });
+    }
+
+    return NextResponse.json({ error: message }, { status });
+  };
+
   const { data: serviceRow, error: serviceError } = await admin
     .from("services")
     .select("*")
@@ -81,14 +197,11 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (serviceError) {
-    return NextResponse.json(
-      { error: "Не получилось загрузить выбранную услугу." },
-      { status: 500 },
-    );
+    return respondWithError(500, "Не получилось загрузить выбранную услугу.");
   }
 
   if (!serviceRow) {
-    return NextResponse.json({ error: "Услуга не найдена." }, { status: 404 });
+    return respondWithError(404, "Услуга не найдена.");
   }
 
   const startsAtIso = toUtcIsoFromLocalSlot({
@@ -98,7 +211,7 @@ export async function POST(request: Request) {
   });
 
   if (!startsAtIso) {
-    return NextResponse.json({ error: "Дата записи не распознана." }, { status: 400 });
+    return respondWithError(400, "Дата записи не распознана.");
   }
 
   const startsAt = new Date(startsAtIso);
@@ -108,65 +221,67 @@ export async function POST(request: Request) {
   const bufferMinutes = Number(profileRow.buffer_minutes ?? 0);
   const slotBusyEnd = new Date(endsAt.getTime() + bufferMinutes * 60_000);
 
-  const { data: hasConflict, error: collisionError } = await admin.rpc(
-    "has_booking_conflict",
-    {
-      p_profile_id: profileRow.id,
-      p_candidate_start: startsAt.toISOString(),
-      p_candidate_busy_end: slotBusyEnd.toISOString(),
-      p_buffer_minutes: bufferMinutes,
-    },
-  );
+  const { hasConflict, error: collisionError } = await checkBookingConflict({
+    client: admin,
+    profileId: String(profileRow.id),
+    candidateStartIso: startsAt.toISOString(),
+    candidateBusyEndIso: slotBusyEnd.toISOString(),
+    bufferMinutes,
+  });
 
   if (collisionError) {
-    return NextResponse.json(
-      { error: "Не получилось проверить свободное время." },
-      { status: 500 },
-    );
+    console.error("okno: failed to check booking conflict", collisionError);
+    return respondWithError(500, "Не получилось проверить свободное время.");
   }
 
   if (hasConflict) {
-    return NextResponse.json(
-      { error: "Это время уже занято. Выбери другой слот." },
-      { status: 409 },
-    );
+    return respondWithError(409, "Это время уже занято. Выбери другой слот.");
   }
 
   const encryptedPhone = encryptPhone(storedPhone);
   const phoneHash = hashPhone(storedPhone);
   let clientRow: { id: string } | null = null;
+  let supportsPhoneHash = true;
 
-  const { data: existingClient, error: existingClientError } = await admin
+  const existingClientLookup = await admin
     .from("clients")
     .select("id")
     .eq("profile_id", profileRow.id)
     .eq("phone_hash", phoneHash)
     .maybeSingle();
 
-  if (existingClientError) {
-    return NextResponse.json(
-      { error: "Не получилось найти клиента в базе." },
-      { status: 500 },
-    );
+  if (existingClientLookup.error) {
+    if (isSupabaseMissingColumnError(existingClientLookup.error, "phone_hash")) {
+      supportsPhoneHash = false;
+    } else {
+      return respondWithError(500, "Не получилось найти клиента в базе.");
+    }
   }
 
-  let resolvedClient = existingClient;
+  let resolvedClient = supportsPhoneHash ? existingClientLookup.data : null;
 
   if (!resolvedClient) {
-    const { data: legacyClients, error: legacyClientError } = await admin
+    let legacyClientsQuery = admin
       .from("clients")
-      .select("id, phone_encrypted, phone_hash")
-      .eq("profile_id", profileRow.id)
-      .is("phone_hash", null);
+      .select(supportsPhoneHash ? "id, phone_encrypted, phone_hash" : "id, phone_encrypted")
+      .eq("profile_id", profileRow.id);
 
-    if (legacyClientError) {
-      return NextResponse.json(
-        { error: "Не получилось найти клиента в базе." },
-        { status: 500 },
-      );
+    if (supportsPhoneHash) {
+      legacyClientsQuery = legacyClientsQuery.is("phone_hash", null);
     }
 
-    const matchedLegacyClient = (legacyClients ?? []).find((client) => {
+    const { data: legacyClients, error: legacyClientError } = await legacyClientsQuery;
+
+    if (legacyClientError) {
+      return respondWithError(500, "Не получилось найти клиента в базе.");
+    }
+
+    const legacyClientRows = (legacyClients ?? []) as unknown as Array<{
+      id: string;
+      phone_encrypted?: string | null;
+    }>;
+
+    const matchedLegacyClient = legacyClientRows.find((client) => {
       const encryptedPhoneValue =
         typeof client.phone_encrypted === "string" ? client.phone_encrypted : "";
 
@@ -179,46 +294,42 @@ export async function POST(request: Request) {
   }
 
   if (resolvedClient) {
+    const clientUpdatePayload = {
+      name: parsed.data.name,
+      phone_encrypted: encryptedPhone,
+      last_booking_at: startsAt.toISOString(),
+      ...(supportsPhoneHash ? { phone_hash: phoneHash } : {}),
+    };
     const { data: updatedClient, error: updateClientError } = await admin
       .from("clients")
-      .update({
-        name: parsed.data.name,
-        phone_encrypted: encryptedPhone,
-        phone_hash: phoneHash,
-        last_booking_at: startsAt.toISOString(),
-      })
+      .update(clientUpdatePayload)
       .eq("id", resolvedClient.id)
       .select("id")
       .single();
 
     if (updateClientError || !updatedClient) {
-      return NextResponse.json(
-        { error: "Не получилось обновить данные клиента." },
-        { status: 500 },
-      );
+      return respondWithError(500, "Не получилось обновить данные клиента.");
     }
 
     clientRow = updatedClient;
   } else {
+    const clientInsertPayload = {
+      profile_id: profileRow.id,
+      name: parsed.data.name,
+      phone_encrypted: encryptedPhone,
+      phone_last4: phoneLast4(storedPhone),
+      notes: "",
+      last_booking_at: startsAt.toISOString(),
+      ...(supportsPhoneHash ? { phone_hash: phoneHash } : {}),
+    };
     const { data: insertedClient, error: insertClientError } = await admin
       .from("clients")
-      .insert({
-        profile_id: profileRow.id,
-        name: parsed.data.name,
-        phone_encrypted: encryptedPhone,
-        phone_hash: phoneHash,
-        phone_last4: phoneLast4(storedPhone),
-        notes: "",
-        last_booking_at: startsAt.toISOString(),
-      })
+      .insert(clientInsertPayload)
       .select("id")
       .single();
 
     if (insertClientError || !insertedClient) {
-      return NextResponse.json(
-        { error: "Не получилось сохранить клиента." },
-        { status: 500 },
-      );
+      return respondWithError(500, "Не получилось сохранить клиента.");
     }
 
     clientRow = insertedClient;
@@ -245,7 +356,7 @@ export async function POST(request: Request) {
     .single();
 
   if (bookingError || !bookingRow) {
-    return NextResponse.json({ error: "Не получилось создать запись." }, { status: 500 });
+    return respondWithError(500, "Не получилось создать запись.");
   }
 
   const startsAtLabel = humanizeBookingDate({
@@ -253,39 +364,87 @@ export async function POST(request: Request) {
     timezone: String(profileRow.timezone ?? "Europe/Simferopol"),
   });
 
-  const [smsResult, telegramResult] = await Promise.all([
-    sendBookingConfirmationSms({
-      phone: parsed.data.phone,
-      masterName: String(profileRow.full_name),
-      serviceTitle: String(serviceRow.title),
-      startsAtLabel,
-    }),
-    sendMasterTelegramNotification({
-      chatId: profileRow.telegram_chat_id ? String(profileRow.telegram_chat_id) : null,
-      clientName: parsed.data.name,
-      serviceTitle: String(serviceRow.title),
-      startsAtLabel,
-    }),
-  ]);
-
-  await admin.from("notification_events").insert([
+  const { data: notificationRows, error: notificationQueueError } = await admin
+    .from("notification_events")
+    .insert([
     {
       profile_id: profileRow.id,
+      booking_id: bookingRow.id,
       type: "sms_confirmation",
-      status: smsResult.ok ? "sent" : "queued",
+      status: "queued",
       target: storedPhone,
+      payload: {
+        phone: parsed.data.phone,
+        masterName: String(profileRow.full_name),
+        serviceTitle: String(serviceRow.title),
+        startsAtLabel,
+      },
     },
     {
       profile_id: profileRow.id,
+      booking_id: bookingRow.id,
       type: "telegram_new_booking",
-      status: telegramResult.ok ? "sent" : "queued",
+      status: "queued",
       target: profileRow.telegram_chat_id ?? "not_configured",
+      payload: {
+        chatId: profileRow.telegram_chat_id ? String(profileRow.telegram_chat_id) : null,
+        clientName: parsed.data.name,
+        serviceTitle: String(serviceRow.title),
+        startsAtLabel,
+      },
     },
-  ]);
+  ])
+    .select("id");
 
-  return NextResponse.json({
+  const reminderRows = buildReminderNotificationEvents({
+    profile: {
+      id: String(profileRow.id),
+      fullName: String(profileRow.full_name),
+      timezone: String(profileRow.timezone ?? "Europe/Simferopol"),
+      telegramChatId: profileRow.telegram_chat_id ? String(profileRow.telegram_chat_id) : null,
+      clientReminderHours: Number(profileRow.client_reminder_hours ?? 24),
+      masterReminderHours: Number(profileRow.master_reminder_hours ?? 2),
+    },
+    bookingId: String(bookingRow.id),
+    phone: storedPhone,
+    clientName: parsed.data.name,
+    serviceTitle: String(serviceRow.title),
+    startsAtIso: startsAt.toISOString(),
+  });
+
+  if (reminderRows.length > 0) {
+    const { error: reminderInsertError } = await admin
+      .from("notification_events")
+      .insert(reminderRows);
+
+    if (reminderInsertError) {
+      console.error("okno: failed to enqueue reminder jobs", reminderInsertError);
+    }
+  }
+
+  const responsePayload = {
     ok: true,
     bookingId: bookingRow.id,
-    redirectUrl: `/${parsed.data.username}/confirm?bookingId=${bookingRow.id}`,
-  });
+    redirectUrl: `/${parsed.data.username}/confirm?bookingId=${bookingRow.id}&cancelToken=${bookingRow.cancellation_token}`,
+  };
+
+  if (idempotencyRowId) {
+    await completeBookingIdempotency({
+      admin,
+      rowId: idempotencyRowId,
+      bookingId: String(bookingRow.id),
+      payload: responsePayload,
+    });
+  }
+
+  if (!notificationQueueError) {
+    const eventIds = (notificationRows ?? []).map((row) => String(row.id));
+    after(async () => {
+      await processNotificationQueue(eventIds);
+    });
+  } else {
+    console.error("okno: failed to enqueue notification jobs", notificationQueueError);
+  }
+
+  return NextResponse.json(responsePayload);
 }

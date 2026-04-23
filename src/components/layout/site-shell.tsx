@@ -1,32 +1,97 @@
+import { Suspense } from "react";
 import Link from "next/link";
+import { AuthenticatedRoutePrefetch } from "@/components/layout/authenticated-route-prefetch";
 import { AccountMenu } from "@/components/layout/account-menu";
 import { NotificationsPanel } from "@/components/layout/notifications-panel";
 import { ButtonLink } from "@/components/ui/button";
+import { appMode } from "@/lib/env";
 import { getAccountNotificationPanelData, getCurrentAuthProfile } from "@/lib/data";
+import { landingDemoPublicPageHref } from "@/lib/landing-demo";
+import { canManageWorkspace, isTeamWorkspaceKind } from "@/lib/workspace";
 
-const links = [
-  { href: "/", label: "Главная" },
-  { href: "/pricing", label: "Тарифы" },
-  { href: "/dashboard", label: "Кабинет" },
-  { href: "/alina-nails", label: "Публичная страница" },
-];
+async function AccountNotificationsSlot({
+  authProfile,
+}: {
+  authProfile: NonNullable<Awaited<ReturnType<typeof getCurrentAuthProfile>>>;
+}) {
+  let accountNotifications: Awaited<
+    ReturnType<typeof getAccountNotificationPanelData>
+  >;
+
+  try {
+    accountNotifications = await getAccountNotificationPanelData(authProfile);
+  } catch {
+    return null;
+  }
+
+  return (
+    <NotificationsPanel
+      items={accountNotifications.items}
+      storageKey={accountNotifications.storageKey}
+    />
+  );
+}
 
 export async function SiteShell({
   children,
   compact = false,
   hideGuestMenu = false,
   showAccountNotifications = false,
+  publicPageHrefOverride,
+  publicPageLabelOverride,
+  resolveAuth = true,
 }: {
   children: React.ReactNode;
   compact?: boolean;
   hideGuestMenu?: boolean;
   showAccountNotifications?: boolean;
+  publicPageHrefOverride?: string;
+  publicPageLabelOverride?: string;
+  resolveAuth?: boolean;
 }) {
-  const authProfile = await getCurrentAuthProfile();
-  const accountNotifications =
-    authProfile && showAccountNotifications
-      ? await getAccountNotificationPanelData(authProfile)
-      : null;
+  let authProfile: Awaited<ReturnType<typeof getCurrentAuthProfile>> | null = null;
+
+  if (resolveAuth) {
+    try {
+      authProfile = await getCurrentAuthProfile();
+    } catch {
+      authProfile = null;
+    }
+  }
+  const isWorkspaceAdmin = Boolean(
+    authProfile &&
+      canManageWorkspace(authProfile.profile.accountRole) &&
+      isTeamWorkspaceKind(authProfile.profile.workspaceKind),
+  );
+  const publicPageHref =
+    publicPageHrefOverride ??
+    (authProfile ? `/${authProfile.profile.username}` : landingDemoPublicPageHref);
+  const publicPageLabel = publicPageLabelOverride ?? "Публичная страница";
+  const prefetchRoutes = authProfile
+    ? isWorkspaceAdmin
+      ? ["/schedule", "/settings", "/clients", "/team", "/dashboard"]
+      : ["/schedule", "/settings", "/clients", "/dashboard"]
+    : [];
+  const links = authProfile
+    ? isWorkspaceAdmin
+      ? [
+          { href: "/", label: "Главная" },
+          { href: "/pricing", label: "Тарифы" },
+          { href: "/team", label: "Команда" },
+          { href: "/dashboard", label: "Мой кабинет" },
+        ]
+      : [
+          { href: "/", label: "Главная" },
+          { href: "/pricing", label: "Тарифы" },
+          { href: "/dashboard", label: "Кабинет" },
+          { href: publicPageHref, label: publicPageLabel },
+        ]
+    : [
+        { href: "/", label: "Главная" },
+        { href: "/pricing", label: "Тарифы" },
+        { href: "/dashboard", label: "Кабинет" },
+        { href: publicPageHref, label: publicPageLabel },
+      ];
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[var(--color-background)]">
@@ -39,6 +104,11 @@ export async function SiteShell({
                 o
               </span>
               okno
+              {appMode === "demo" ? (
+                <span className="rounded-full border border-line bg-panel px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.2em] text-muted">
+                  demo
+                </span>
+              ) : null}
             </Link>
             {!compact ? (
               <nav className="hidden items-center gap-5 md:flex">
@@ -56,15 +126,16 @@ export async function SiteShell({
             <div className="flex items-center gap-3">
               {authProfile ? (
                 <>
-                  {accountNotifications ? (
-                    <NotificationsPanel
-                      items={accountNotifications.items}
-                      storageKey={accountNotifications.storageKey}
-                    />
+                  <AuthenticatedRoutePrefetch routes={prefetchRoutes} />
+                  {showAccountNotifications ? (
+                    <Suspense fallback={null}>
+                      <AccountNotificationsSlot authProfile={authProfile} />
+                    </Suspense>
                   ) : null}
                   <AccountMenu
                     authenticated
                     username={authProfile.profile.username}
+                    showTeamLink={isWorkspaceAdmin}
                   />
                 </>
               ) : (

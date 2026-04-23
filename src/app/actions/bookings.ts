@@ -11,15 +11,21 @@ import {
   hashPhone,
   phoneLast4,
 } from "@/lib/booking";
+import { checkBookingConflict } from "@/lib/booking-conflicts";
 import { getCurrentAuthProfile } from "@/lib/data";
 import { isSupabaseConfigured } from "@/lib/env";
+import {
+  buildReminderNotificationEvents,
+  cancelQueuedReminderEvents,
+} from "@/lib/notification-queue";
 import {
   blockedSlots as mockBlockedSlots,
   bookings as mockBookings,
   clients as mockClients,
   services as mockServices,
 } from "@/lib/mock-data";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { isSupabaseMissingColumnError } from "@/lib/supabase/auth-errors";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type BookingOperationActionState = {
   success: boolean;
@@ -217,8 +223,8 @@ export async function createManualBookingAction(
     return { success: true, message: "Запись добавлена в календарь." };
   }
 
-  const admin = createSupabaseAdminClient();
-  const { data: serviceRow, error: serviceError } = await admin
+  const supabase = await createSupabaseServerClient();
+  const { data: serviceRow, error: serviceError } = await supabase
     .from("services")
     .select("*")
     .eq("id", parsed.data.serviceId)
@@ -247,17 +253,16 @@ export async function createManualBookingAction(
     .plus({ minutes: profile.bufferMinutes })
     .toISO() ?? endsAtIso;
 
-  const { data: hasConflict, error: conflictError } = await admin.rpc(
-    "has_booking_conflict",
-    {
-      p_profile_id: profile.id,
-      p_candidate_start: startsAtIso,
-      p_candidate_busy_end: slotBusyEndIso,
-      p_buffer_minutes: profile.bufferMinutes,
-    },
-  );
+  const { hasConflict, error: conflictError } = await checkBookingConflict({
+    client: supabase,
+    profileId: profile.id,
+    candidateStartIso: startsAtIso,
+    candidateBusyEndIso: slotBusyEndIso,
+    bufferMinutes: profile.bufferMinutes,
+  });
 
   if (conflictError) {
+    console.error("okno: failed to check manual booking conflict", conflictError);
     return {
       success: false,
       message: "Не получилось проверить свободное время.",
@@ -272,34 +277,49 @@ export async function createManualBookingAction(
   const storedPhone = normalizedPhone || parsed.data.phone;
   const encryptedPhone = encryptPhone(storedPhone);
   const phoneHash = hashPhone(storedPhone);
+  let supportsPhoneHash = true;
 
   let resolvedClientId: string | null = null;
 
-  const { data: existingClient, error: existingClientError } = await admin
+  const existingClientLookup = await supabase
     .from("clients")
     .select("id")
     .eq("profile_id", profile.id)
     .eq("phone_hash", phoneHash)
     .maybeSingle();
 
-  if (existingClientError) {
-    return { success: false, message: "Не получилось найти клиента." };
+  if (existingClientLookup.error) {
+    if (isSupabaseMissingColumnError(existingClientLookup.error, "phone_hash")) {
+      supportsPhoneHash = false;
+    } else {
+      return { success: false, message: "Не получилось найти клиента." };
+    }
   }
 
-  if (existingClient) {
-    resolvedClientId = String(existingClient.id);
+  if (supportsPhoneHash && existingClientLookup.data) {
+    resolvedClientId = String(existingClientLookup.data.id);
   } else {
-    const { data: legacyClients, error: legacyClientsError } = await admin
+    let legacyClientsQuery = supabase
       .from("clients")
-      .select("id, phone_encrypted, phone_hash")
-      .eq("profile_id", profile.id)
-      .is("phone_hash", null);
+      .select(supportsPhoneHash ? "id, phone_encrypted, phone_hash" : "id, phone_encrypted")
+      .eq("profile_id", profile.id);
+
+    if (supportsPhoneHash) {
+      legacyClientsQuery = legacyClientsQuery.is("phone_hash", null);
+    }
+
+    const { data: legacyClients, error: legacyClientsError } = await legacyClientsQuery;
 
     if (legacyClientsError) {
       return { success: false, message: "Не получилось найти клиента." };
     }
 
-    const matchedLegacyClient = (legacyClients ?? []).find((client) => {
+    const legacyClientRows = (legacyClients ?? []) as unknown as Array<{
+      id: string;
+      phone_encrypted?: string | null;
+    }>;
+
+    const matchedLegacyClient = legacyClientRows.find((client) => {
       const encryptedPhoneValue =
         typeof client.phone_encrypted === "string" ? client.phone_encrypted : "";
 
@@ -312,14 +332,15 @@ export async function createManualBookingAction(
   }
 
   if (resolvedClientId) {
-    const { error: updateClientError } = await admin
+    const clientUpdatePayload = {
+      name: parsed.data.name,
+      phone_encrypted: encryptedPhone,
+      last_booking_at: startsAtIso,
+      ...(supportsPhoneHash ? { phone_hash: phoneHash } : {}),
+    };
+    const { error: updateClientError } = await supabase
       .from("clients")
-      .update({
-        name: parsed.data.name,
-        phone_encrypted: encryptedPhone,
-        phone_hash: phoneHash,
-        last_booking_at: startsAtIso,
-      })
+      .update(clientUpdatePayload)
       .eq("id", resolvedClientId)
       .eq("profile_id", profile.id);
 
@@ -327,17 +348,18 @@ export async function createManualBookingAction(
       return { success: false, message: "Не получилось обновить клиента." };
     }
   } else {
-    const { data: insertedClient, error: insertClientError } = await admin
+    const clientInsertPayload = {
+      profile_id: profile.id,
+      name: parsed.data.name,
+      phone_encrypted: encryptedPhone,
+      phone_last4: phoneLast4(storedPhone),
+      notes: "",
+      last_booking_at: startsAtIso,
+      ...(supportsPhoneHash ? { phone_hash: phoneHash } : {}),
+    };
+    const { data: insertedClient, error: insertClientError } = await supabase
       .from("clients")
-      .insert({
-        profile_id: profile.id,
-        name: parsed.data.name,
-        phone_encrypted: encryptedPhone,
-        phone_hash: phoneHash,
-        phone_last4: phoneLast4(storedPhone),
-        notes: "",
-        last_booking_at: startsAtIso,
-      })
+      .insert(clientInsertPayload)
       .select("id")
       .single();
 
@@ -354,20 +376,44 @@ export async function createManualBookingAction(
       cancellationNoticeHours: profile.cancellationNoticeHours,
     }) ?? startsAtIso;
 
-  const { error: insertBookingError } = await admin.from("bookings").insert({
-    profile_id: profile.id,
-    client_id: resolvedClientId,
-    service_id: String(serviceRow.id),
-    status: "confirmed",
-    starts_at: startsAtIso,
-    ends_at: endsAtIso,
-    source: "manual",
-    client_note: parsed.data.note,
-    cancellation_token_expires_at: cancellationDeadlineIso,
+  const { data: insertedBooking, error: insertBookingError } = await supabase
+    .from("bookings")
+    .insert({
+      profile_id: profile.id,
+      client_id: resolvedClientId,
+      service_id: String(serviceRow.id),
+      status: "confirmed",
+      starts_at: startsAtIso,
+      ends_at: endsAtIso,
+      source: "manual",
+      client_note: parsed.data.note,
+      cancellation_token_expires_at: cancellationDeadlineIso,
+    })
+    .select("id")
+    .single();
+
+  if (insertBookingError || !insertedBooking) {
+    return { success: false, message: "Не получилось создать запись." };
+  }
+
+  const reminderRows = buildReminderNotificationEvents({
+    profile: {
+      id: profile.id,
+      fullName: profile.fullName,
+      timezone: profile.timezone,
+      telegramChatId: profile.telegramChatId,
+      clientReminderHours: profile.clientReminderHours,
+      masterReminderHours: profile.masterReminderHours,
+    },
+    bookingId: String(insertedBooking.id),
+    phone: storedPhone,
+    clientName: parsed.data.name,
+    serviceTitle: String(serviceRow.title),
+    startsAtIso,
   });
 
-  if (insertBookingError) {
-    return { success: false, message: "Не получилось создать запись." };
+  if (reminderRows.length > 0) {
+    await supabase.from("notification_events").insert(reminderRows);
   }
 
   revalidateBookingPaths(profile.username);
@@ -413,8 +459,8 @@ export async function cancelBookingByMasterAction(
     return { success: true, message: "Запись отменена." };
   }
 
-  const admin = createSupabaseAdminClient();
-  const { data: updatedBooking, error } = await admin
+  const supabase = await createSupabaseServerClient();
+  const { data: updatedBooking, error } = await supabase
     .from("bookings")
     .update({
       status: "cancelled_by_master",
@@ -433,6 +479,8 @@ export async function cancelBookingByMasterAction(
   if (!updatedBooking) {
     return { success: false, message: "Эта запись уже не активна." };
   }
+
+  await cancelQueuedReminderEvents(parsed.data.bookingId);
 
   revalidateBookingPaths(profile.username);
 
@@ -471,8 +519,8 @@ export async function updateClientNotesAction(
     return { success: true, message: "Заметка сохранена." };
   }
 
-  const admin = createSupabaseAdminClient();
-  const { error } = await admin
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
     .from("clients")
     .update({ notes: parsed.data.notes })
     .eq("id", parsed.data.clientId)

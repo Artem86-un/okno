@@ -1,4 +1,5 @@
 export const env = {
+  appMode: process.env.APP_MODE,
   appUrl: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
   supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -7,6 +8,7 @@ export const env = {
   smsApiUrl: process.env.SMS_API_URL,
   smsApiKey: process.env.SMS_API_KEY,
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
+  jobsSecret: process.env.JOBS_SECRET,
 };
 
 export const isSupabaseConfigured = Boolean(
@@ -16,3 +18,24 @@ export const isSupabaseConfigured = Boolean(
 export const isSmsConfigured = Boolean(env.smsApiUrl && env.smsApiKey);
 
 export const isTelegramConfigured = Boolean(env.telegramBotToken);
+export const isJobsSecretConfigured = Boolean(env.jobsSecret);
+
+export type AppMode = "demo" | "work";
+
+export const appMode: AppMode =
+  env.appMode === "demo" || env.appMode === "work"
+    ? env.appMode
+    : isSupabaseConfigured
+      ? "work"
+      : "demo";
+
+export const isDemoMode = appMode === "demo";
+export const isWorkMode = appMode === "work";
+
+export function ensureWorkRuntime(context: string) {
+  if (isWorkMode && !isSupabaseConfigured) {
+    throw new Error(
+      `Рабочий контур не настроен: ${context}. Добавь рабочие ключи Supabase или переключи APP_MODE в demo.`,
+    );
+  }
+}

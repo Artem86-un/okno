@@ -14,13 +14,14 @@ export function Input({ label, hint, className, ...props }: InputProps) {
       <input
         style={{
           borderColor: "var(--color-line, #d3c5b3)",
-          backgroundColor: "#ffffff",
+          backgroundColor: "var(--ui-field-bg, #ffffff)",
           color: "var(--color-ink, #23241f)",
         }}
         className={cn(
-          "min-h-12 rounded-2xl border px-4 text-[15px] outline-none transition placeholder:text-[#8b8477]",
+          "min-h-12 rounded-2xl border px-4 text-[15px] outline-none transition",
           className,
         )}
+        data-ui-input
         {...props}
       />
       {hint ? (

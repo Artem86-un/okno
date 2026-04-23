@@ -14,13 +14,14 @@ export function Textarea({ label, hint, className, ...props }: TextareaProps) {
       <textarea
         style={{
           borderColor: "var(--color-line, #d3c5b3)",
-          backgroundColor: "#ffffff",
+          backgroundColor: "var(--ui-field-bg, #ffffff)",
           color: "var(--color-ink, #23241f)",
         }}
         className={cn(
-          "min-h-28 rounded-3xl border px-4 py-3 text-[15px] outline-none transition placeholder:text-[#8b8477]",
+          "min-h-28 rounded-3xl border px-4 py-3 text-[15px] outline-none transition",
           className,
         )}
+        data-ui-textarea
         {...props}
       />
       {hint ? (

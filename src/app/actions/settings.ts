@@ -4,8 +4,17 @@ import { revalidatePath } from "next/cache";
 import { DateTime } from "luxon";
 import { z } from "zod";
 import { isSupabaseConfigured } from "@/lib/env";
+import { bookingThemePresetIds } from "@/lib/booking-theme-presets";
 import { getCurrentAuthProfile } from "@/lib/data";
+import {
+  buildPortfolioWorksFromPaths,
+  extractPortfolioStoragePaths,
+  isOwnedProfileMediaPath,
+  maxPortfolioWorks,
+  profileMediaBucket,
+} from "@/lib/profile-media";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { isSupabaseMissingColumnError } from "@/lib/supabase/auth-errors";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type SettingsActionState = {
@@ -26,6 +35,12 @@ const preferencesSchema = z.object({
   slotIntervalMinutes: z.coerce.number().min(5).max(180),
   bufferMinutes: z.coerce.number().min(0).max(180),
   cancellationNoticeHours: z.coerce.number().min(0).max(168),
+  clientReminderHours: z.coerce.number().min(0).max(168),
+  masterReminderHours: z.coerce.number().min(0).max(168),
+});
+
+const bookingThemePresetSchema = z.object({
+  bookingThemePreset: z.enum(bookingThemePresetIds),
 });
 
 const accessSchema = z.object({
@@ -48,6 +63,21 @@ async function requireProfile() {
   const authProfile = await getCurrentAuthProfile();
 
   return authProfile?.profile ?? null;
+}
+
+function revalidateProfilePaths(username: string) {
+  revalidatePath("/settings");
+  revalidatePath("/dashboard");
+  revalidatePath(`/${username}`);
+}
+
+async function removeProfileMediaObjects(paths: string[]) {
+  if (paths.length === 0) {
+    return;
+  }
+
+  const admin = createSupabaseAdminClient();
+  await admin.storage.from(profileMediaBucket).remove(paths);
 }
 
 export async function updateProfileAction(
@@ -75,8 +105,8 @@ export async function updateProfileAction(
     };
   }
 
-  const admin = createSupabaseAdminClient();
-  const { error } = await admin
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
     .from("profiles")
     .update({
       full_name: parsed.data.fullName,
@@ -94,11 +124,124 @@ export async function updateProfileAction(
     };
   }
 
-  revalidatePath("/settings");
-  revalidatePath("/dashboard");
-  revalidatePath(`/${profile.username}`);
+  revalidateProfilePaths(profile.username);
 
   return { success: true, message: "Профиль обновлен." };
+}
+
+export async function updateAvatarAction(input: { path: string }) {
+  if (!isSupabaseConfigured) {
+    return {
+      success: false,
+      message: "Для обновления аватара нужно подключение к Supabase.",
+    };
+  }
+
+  const profile = await requireProfile();
+  if (!profile) {
+    return { success: false, message: "Сессия истекла. Войди заново." };
+  }
+
+  if (!input.path) {
+    return {
+      success: false,
+      message: "Не передан путь до нового аватара.",
+    };
+  }
+
+  if (!isOwnedProfileMediaPath(input.path, profile.passwordAuthId, "avatar")) {
+    return {
+      success: false,
+      message: "Путь аватара не принадлежит текущему пользователю.",
+    };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      avatar_url: input.path,
+    })
+    .eq("id", profile.id);
+
+  if (error) {
+    await removeProfileMediaObjects([input.path]);
+    return {
+      success: false,
+      message: `Не получилось обновить аватар.${error.message ? ` ${error.message}` : ""}`,
+    };
+  }
+
+  revalidateProfilePaths(profile.username);
+
+  if (profile.avatarPath && profile.avatarPath !== input.path) {
+    await removeProfileMediaObjects([profile.avatarPath]);
+  }
+
+  return { success: true, message: "Аватар обновлен." };
+}
+
+export async function updatePortfolioWorksAction(input: { paths: string[] }) {
+  if (!isSupabaseConfigured) {
+    return {
+      success: false,
+      message: "Для загрузки работ нужно подключение к Supabase.",
+    };
+  }
+
+  const profile = await requireProfile();
+  if (!profile) {
+    return { success: false, message: "Сессия истекла. Войди заново." };
+  }
+
+  if (input.paths.length === 0) {
+    return {
+      success: false,
+      message: "Не переданы пути до готовых работ.",
+    };
+  }
+
+  if (input.paths.length > maxPortfolioWorks) {
+    return {
+      success: false,
+      message: `Можно загрузить не больше ${maxPortfolioWorks} готовых работ за раз.`,
+    };
+  }
+
+  for (const path of input.paths) {
+    if (!isOwnedProfileMediaPath(path, profile.passwordAuthId, "portfolio")) {
+      return {
+        success: false,
+        message: "Одна из работ не принадлежит текущему пользователю.",
+      };
+    }
+  }
+
+  const nextPortfolioWorks = buildPortfolioWorksFromPaths(input.paths);
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      portfolio_works: nextPortfolioWorks,
+    })
+    .eq("id", profile.id);
+
+  if (error) {
+    await removeProfileMediaObjects(input.paths);
+    return {
+      success: false,
+      message: `Не получилось обновить готовые работы.${error.message ? ` ${error.message}` : ""}`,
+    };
+  }
+
+  revalidateProfilePaths(profile.username);
+
+  const previousPaths = extractPortfolioStoragePaths(profile.portfolioWorks);
+  const obsoletePaths = previousPaths.filter((path) => !input.paths.includes(path));
+  await removeProfileMediaObjects(obsoletePaths);
+
+  return { success: true, message: "Готовые работы обновлены." };
 }
 
 export async function updateBookingPreferencesAction(
@@ -122,14 +265,16 @@ export async function updateBookingPreferencesAction(
     return { success: false, message: "Проверь настройки записи." };
   }
 
-  const admin = createSupabaseAdminClient();
-  const { error } = await admin
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
     .from("profiles")
     .update({
       booking_window_days: parsed.data.bookingWindowDays,
       slot_interval_minutes: parsed.data.slotIntervalMinutes,
       buffer_minutes: parsed.data.bufferMinutes,
       cancellation_notice_hours: parsed.data.cancellationNoticeHours,
+      client_reminder_hours: parsed.data.clientReminderHours,
+      master_reminder_hours: parsed.data.masterReminderHours,
     })
     .eq("id", profile.id);
 
@@ -142,6 +287,63 @@ export async function updateBookingPreferencesAction(
 
   revalidatePath("/settings");
   return { success: true, message: "Параметры записи сохранены." };
+}
+
+export async function updateBookingThemePresetAction(
+  _prevState: SettingsActionState,
+  formData: FormData,
+) {
+  if (!isSupabaseConfigured) {
+    return {
+      success: false,
+      message: "Для сохранения оформления записи нужно подключение к Supabase.",
+    };
+  }
+
+  const profile = await requireProfile();
+  if (!profile) {
+    return { success: false, message: "Сессия истекла. Войди заново." };
+  }
+
+  const parsed = bookingThemePresetSchema.safeParse({
+    bookingThemePreset: formData.get("bookingThemePreset"),
+  });
+  if (!parsed.success) {
+    return { success: false, message: "Выбери один из готовых пресетов." };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from("profiles")
+    .update({
+      booking_theme_preset: parsed.data.bookingThemePreset,
+    })
+    .eq("id", profile.id);
+
+  if (error) {
+    if (isSupabaseMissingColumnError(error, "booking_theme_preset")) {
+      return {
+        success: false,
+        message:
+          "В базе еще нет поля для пресета. Прогони миграцию 202604190001_booking_theme_preset.sql и попробуй еще раз.",
+      };
+    }
+
+    return {
+      success: false,
+      message: `Не получилось сохранить оформление клиентских страниц.${error.message ? ` ${error.message}` : ""}`,
+    };
+  }
+
+  revalidatePath("/settings");
+  revalidatePath(`/${profile.username}`);
+  revalidatePath(`/${profile.username}/book`);
+  revalidatePath(`/${profile.username}/confirm`);
+
+  return {
+    success: true,
+    message: "Оформление клиентских страниц сохранено.",
+  };
 }
 
 export async function updateAccessAction(
@@ -166,7 +368,6 @@ export async function updateAccessAction(
   }
 
   const supabase = await createSupabaseServerClient();
-  const admin = createSupabaseAdminClient();
 
   const emailChanged = parsed.data.email !== profile.email;
   const passwordChanged = Boolean(parsed.data.password);
@@ -216,7 +417,7 @@ export async function updateAccessAction(
     };
   }
 
-  const { error: profileError } = await admin
+  const { error: profileError } = await supabase
     .from("profiles")
     .update({ email: parsed.data.email })
     .eq("id", profile.id);
@@ -261,8 +462,8 @@ export async function createServiceAction(
     return { success: false, message: "Проверь поля новой услуги." };
   }
 
-  const admin = createSupabaseAdminClient();
-  const { error } = await admin.from("services").insert({
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.from("services").insert({
     profile_id: profile.id,
     title: parsed.data.title,
     description: parsed.data.description,
@@ -311,8 +512,8 @@ export async function updateServiceAction(
         ? true
         : formData.get("isActive") === "on";
 
-  const admin = createSupabaseAdminClient();
-  const { error } = await admin
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
     .from("services")
     .update({
       title: parsed.data.title,
@@ -374,8 +575,8 @@ export async function updateAvailabilityAction(
     }
   }
 
-  const admin = createSupabaseAdminClient();
-  const { error: deleteError } = await admin
+  const supabase = await createSupabaseServerClient();
+  const { error: deleteError } = await supabase
     .from("availability_rules")
     .delete()
     .eq("profile_id", profile.id);
@@ -385,7 +586,7 @@ export async function updateAvailabilityAction(
   }
 
   if (rows.length > 0) {
-    const { error: insertError } = await admin
+    const { error: insertError } = await supabase
       .from("availability_rules")
       .insert(rows);
 
@@ -445,8 +646,8 @@ export async function createBlockedSlotAction(
     };
   }
 
-  const admin = createSupabaseAdminClient();
-  const { error } = await admin.from("blocked_slots").insert({
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.from("blocked_slots").insert({
     profile_id: profile.id,
     starts_at: startsAt.toUTC().toISO(),
     ends_at: endsAt.toUTC().toISO(),
@@ -486,8 +687,8 @@ export async function deleteBlockedSlotAction(formData: FormData) {
     return;
   }
 
-  const admin = createSupabaseAdminClient();
-  await admin
+  const supabase = await createSupabaseServerClient();
+  await supabase
     .from("blocked_slots")
     .delete()
     .eq("id", blockedSlotId)

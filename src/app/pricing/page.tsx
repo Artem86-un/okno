@@ -3,16 +3,15 @@ import { SiteShell } from "@/components/layout/site-shell";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getCurrentAuthProfile, getPricingData } from "@/lib/data";
+import { getPricingData } from "@/lib/data";
 import { profile as mockProfile } from "@/lib/mock-data";
 
 export default async function PricingPage() {
-  const authProfile = await getCurrentAuthProfile();
   const pricingPlans = getPricingData();
-  const profile = authProfile?.profile ?? mockProfile;
+  const profile = mockProfile;
 
   return (
-    <SiteShell>
+    <SiteShell resolveAuth={false}>
       <div className="space-y-8 py-6">
         <div className="space-y-4">
           <Badge tone="accent">Тарифы без агрессии</Badge>
@@ -32,9 +31,9 @@ export default async function PricingPage() {
               "linear-gradient(135deg, var(--color-ink) 0%, #35362f 100%)",
           }}
         >
-          <p className="text-sm uppercase tracking-[0.24em] text-white/70">Текущее состояние</p>
+          <p className="text-sm uppercase tracking-[0.24em] text-white/70">Пример лимита</p>
           <h2 className="mt-3 text-3xl font-semibold text-white">
-            Осталось {profile.monthlyBookingLimit - profile.monthlyBookingsUsed} из{" "}
+            Например, осталось {profile.monthlyBookingLimit - profile.monthlyBookingsUsed} из{" "}
             {profile.monthlyBookingLimit} записей
           </h2>
           <p className="mt-3 max-w-2xl text-sm leading-7 text-white/80">

@@ -6,10 +6,12 @@ export function SubmitButton({
   idleLabel,
   pendingLabel,
   className,
+  disabled = false,
 }: {
   idleLabel: string;
   pendingLabel: string;
   className?: string;
+  disabled?: boolean;
 }) {
   const { pending } = useFormStatus();
 
@@ -21,7 +23,7 @@ export function SubmitButton({
         color: "#ffffff",
       }}
       className={`inline-flex min-h-11 items-center justify-center rounded-full px-5 py-3 text-sm font-medium transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 ${className ?? ""}`}
-      disabled={pending}
+      disabled={pending || disabled}
     >
       {pending ? pendingLabel : idleLabel}
     </button>

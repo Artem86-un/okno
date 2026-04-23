@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useActionState, useState } from "react";
 import { EyeOff, Pencil } from "lucide-react";
 import {
@@ -17,6 +18,21 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { AvailabilityRule, Profile, Service } from "@/lib/mock-data";
 
+const ProfileMediaUploadSection = dynamic(
+  () =>
+    import("@/components/settings/profile-media-upload-section").then(
+      (mod) => mod.ProfileMediaUploadSection,
+    ),
+  {
+    loading: () => (
+      <div className="space-y-6">
+        <div className="h-80 animate-pulse rounded-[24px] bg-panel" />
+        <div className="h-96 animate-pulse rounded-[24px] border border-line bg-white/80" />
+      </div>
+    ),
+  },
+);
+
 const initialState: SettingsActionState = {
   success: false,
   message: "",
@@ -26,36 +42,52 @@ export function ProfileSettingsForm({ profile }: { profile: Profile }) {
   const [state, action] = useActionState(updateProfileAction, initialState);
 
   return (
-    <form action={action} className="space-y-4">
-      <Input label="Имя мастера" name="fullName" defaultValue={profile.fullName} required />
-      <Input label="Ниша" name="specialty" defaultValue={profile.specialty} required />
-      <Input
-        label="Локация"
-        name="locationText"
-        defaultValue={profile.locationText}
-        placeholder="Например, Симферополь, центр"
-      />
-      <Select
-        label="Часовой пояс"
-        name="timezone"
-        defaultValue={profile.timezone}
-        options={[
-          { value: "Europe/Simferopol", label: "Москва (UTC+3)" },
-          { value: "Europe/Moscow", label: "Москва (UTC+3)" },
-          { value: "Asia/Yekaterinburg", label: "Екатеринбург (UTC+5)" },
-          { value: "Asia/Novosibirsk", label: "Новосибирск (UTC+7)" },
-        ]}
-        hint="Все записи и уведомления будут использовать этот часовой пояс."
-      />
-      <Textarea
-        label="О себе"
-        name="bio"
-        defaultValue={profile.bio}
-        placeholder="Пара слов о мастере и атмосфере приема"
-      />
-      <FormMessage message={state.message} success={state.success} />
-      <SubmitButton idleLabel="Сохранить" pendingLabel="Сохраняю..." />
-    </form>
+    <div className="space-y-6">
+      <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
+        <ProfileMediaUploadSection profile={profile} />
+
+        <form action={action} className="space-y-4 rounded-[24px] border border-line bg-white p-5">
+          <Input
+            label="Имя мастера"
+            name="fullName"
+            defaultValue={profile.fullName}
+            required
+          />
+          <Input
+            label="Ниша"
+            name="specialty"
+            defaultValue={profile.specialty}
+            required
+          />
+          <Input
+            label="Локация"
+            name="locationText"
+            defaultValue={profile.locationText}
+            placeholder="Например, Симферополь, центр"
+          />
+          <Select
+            label="Часовой пояс"
+            name="timezone"
+            defaultValue={profile.timezone}
+            options={[
+              { value: "Europe/Simferopol", label: "Москва (UTC+3)" },
+              { value: "Europe/Moscow", label: "Москва (UTC+3)" },
+              { value: "Asia/Yekaterinburg", label: "Екатеринбург (UTC+5)" },
+              { value: "Asia/Novosibirsk", label: "Новосибирск (UTC+7)" },
+            ]}
+            hint="Все записи и уведомления будут использовать этот часовой пояс."
+          />
+          <Textarea
+            label="О себе"
+            name="bio"
+            defaultValue={profile.bio}
+            placeholder="Пара слов о мастере и атмосфере приема"
+          />
+          <FormMessage message={state.message} success={state.success} />
+          <SubmitButton idleLabel="Сохранить" pendingLabel="Сохраняю..." />
+        </form>
+      </div>
+    </div>
   );
 }
 
@@ -132,6 +164,22 @@ export function BookingPreferencesForm({ profile }: { profile: Profile }) {
           defaultValue={String(profile.cancellationNoticeHours)}
           description="За сколько часов до визита клиент еще может отменить запись сам."
           example="2 часа = позже этого времени отмена уже недоступна."
+        />
+        <ParameterField
+          label="Напомнить клиенту"
+          unit="часов до визита"
+          name="clientReminderHours"
+          defaultValue={String(profile.clientReminderHours)}
+          description="За сколько часов до визита клиенту придет напоминание."
+          example="24 часа = за день до записи. 0 = отключить."
+        />
+        <ParameterField
+          label="Напомнить мастеру"
+          unit="часов до визита"
+          name="masterReminderHours"
+          defaultValue={String(profile.masterReminderHours)}
+          description="За сколько часов до визита мастер получит напоминание в Telegram."
+          example="2 часа = напоминание за пару часов до клиента. 0 = отключить."
         />
       </div>
       <FormMessage message={state.message} success={state.success} />

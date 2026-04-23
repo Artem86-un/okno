@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Bell, Megaphone, Sparkles, X } from "lucide-react";
 import type { AccountNotificationItem } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
+import { ClientPortal } from "@/components/ui/client-portal";
 import { cn } from "@/lib/utils";
 
 const NOTIFICATIONS_CHANGE_EVENT = "okno-notifications-change";
@@ -114,7 +115,7 @@ export function NotificationsPanel({
       </button>
 
       {open ? (
-        <>
+        <ClientPortal>
           <button
             type="button"
             aria-label="Закрыть уведомления"
@@ -184,7 +185,7 @@ export function NotificationsPanel({
               )}
             </div>
           </div>
-        </>
+        </ClientPortal>
       ) : null}
     </>
   );

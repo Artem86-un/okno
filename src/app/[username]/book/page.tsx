@@ -8,15 +8,17 @@ type Props = {
 
 export default async function BookingPage({ params }: Props) {
   const { username } = await params;
-  const { services, bookingSlotsByService } = await getPublicPageData(username);
+  const { profile, services, bookingSlotsByService } =
+    await getPublicPageData(username);
 
   return (
-    <SiteShell compact hideGuestMenu>
+    <SiteShell compact hideGuestMenu resolveAuth={false}>
       <div className="mx-auto max-w-4xl py-6">
         <BookingFlow
           username={username}
           services={services}
           bookingSlotsByService={bookingSlotsByService}
+          themePresetId={profile.bookingThemePresetId}
         />
       </div>
     </SiteShell>
